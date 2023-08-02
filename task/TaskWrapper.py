@@ -13,6 +13,8 @@ import statistics
 
 from tqdm import trange
 import shutil
+from task.util import os_makedirs, os_rmdirs, set_logger
+
 
 class Task(Opt):
     def __init__(self, args):
@@ -95,7 +97,7 @@ class Task(Opt):
         self.model_eval_dir_list = []
         
         for sid in range(len(self.data_opts.seriesPack)):
-            # H in this place should be binging with the corr. subPack.
+            # toDo: change sid to snr tag.
             _H = self.data_opts.seriesPack[sid].H
             _task_dir = os.path.join(self.fit_dir, 'series{}'.format(sid), 'h{}'.format(_H), self.model_name)
             _eval_dir = os.path.join(
@@ -106,15 +108,24 @@ class Task(Opt):
             self.model_fit_dir_list.append(_task_dir)
             self.model_eval_dir_list.append(_eval_dir)
         
-        # os.path.join(self.fit_dir, 'series{}'.format(sub_count), 
-        #                                    'h{}'.format(subPack.H), self.model_name)
 
         if fit:
             self.model_opts.hyper.device = self.device
-            self.tune = args.tune  # default False
+            # self.tune = args.tune  # default False
             
     def model_import(self,):
         model = importlib.import_module(self.model_opts.import_path)
         model = getattr(model, self.model_opts.class_name)
         return model        
-               
+    
+    def logger_config(self, dir, stage, cv, sub_count):
+        log_path = os.path.join(dir, 'logs',
+                                '{}.cv{}.series{}.log'.format(stage, cv, sub_count))
+        log_name = '{}.series{}.cv{}.{}'.format(
+            self.data_name, sub_count, cv, self.model_name)
+        logger = set_logger(log_path, log_name, self.logger_level)
+        return logger
+    
+    def conduct(self,):
+        
+        pass

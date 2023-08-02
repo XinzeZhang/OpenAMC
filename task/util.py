@@ -6,6 +6,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), os.path.pardir))
 import logging
 from pathlib import Path
 import shutil
+from tqdm import tqdm
 
 def os_makedirs(folder_path):
     try:
