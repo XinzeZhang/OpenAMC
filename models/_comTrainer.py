@@ -4,7 +4,7 @@ import time
 import pandas as pd
 import torch
 from torch import optim, nn
-from tqdm import tqdm
+from tqdm import tqdm,trange
 from torch.optim import lr_scheduler
 
 import numpy as np
@@ -107,7 +107,7 @@ class Trainer:
 
     def loop(self):
         self.before_train()
-        for self.iter in range(0, self.cfg.epochs):
+        for self.iter in trange(0, self.cfg.epochs):
             self.before_train_step()
             self.run_train_step()
             self.after_train_step()
@@ -217,15 +217,13 @@ class Trainer:
                                                                            time.time() - self.t_s,
                                                                            self.val_loss.avg,
                                                                            self.val_acc.avg))
-        if self.cfg.monitor == 'acc':
-            if self.val_acc.avg >= self.best_monitor:
-                self.best_monitor = self.val_acc.avg
-                save_model_name = self.cfg.dataset + '_' + 'AMC_Net' + '.pkl'
-                torch.save(self.model.state_dict(), os.path.join(
-                    self.cfg.model_dir, save_model_name))
-        else:
-            raise NotImplementedError(
-                f'Not Implement monitor: {self.cfg.monitor}')
+        
+        if self.val_acc.avg >= self.best_monitor:
+            self.best_monitor = self.val_acc.avg
+            # toDo: change to annother location.
+            save_model_name = self.cfg.dataset + '_' + 'AMC_Net' + '.pkl'
+            torch.save(self.model.state_dict(), os.path.join(
+                self.cfg.model_dir, save_model_name))
 
         self.early_stopping(self.val_loss.avg, self.model)
 

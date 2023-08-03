@@ -87,7 +87,6 @@ class AMC_Net_base(nn_base):
         self.hyper.latent_dim = 512
         self.hyper.num_heads = 2
         self.hyper.conv_chan_list = [36, 64, 128, 256]
-        self.hyper.monitor = 'acc'
         
         
         
