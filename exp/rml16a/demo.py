@@ -52,8 +52,14 @@ class Data(TaskDataset):
         self.SNRs= SNRs
         self.snrs = snrs
         self.mods = mods
+
+    def pack_dataset(self):
+        """
+        Split the preprocessed data, and pack them to self.train_set, self.val_set, self.test_set, self.test_idx
+        """
+        # toDo: add if/else to auto load pre-split dataset
         
-        
+        return super().pack_dataset()
         
 if __name__ == "__main__":
     args = get_parser()
