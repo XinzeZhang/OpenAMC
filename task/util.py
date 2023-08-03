@@ -8,6 +8,23 @@ from pathlib import Path
 import shutil
 from tqdm import tqdm
 
+import random
+
+import numpy as np
+import torch
+
+def fix_seed(seed):
+    seed = int(seed)
+    random.seed(seed)
+    os.environ['PYHONHASHSEED'] = str(seed)
+    np.random.seed(seed) # type: ignore
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    torch.backends.cudnn.benchmark = False # type: ignore
+    torch.backends.cudnn.deterministic = True # type: ignore
+    
+
 def os_makedirs(folder_path):
     try:
         if not os.path.exists(folder_path):

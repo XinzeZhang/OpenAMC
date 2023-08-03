@@ -16,7 +16,7 @@ def get_parser(parsing = True):
     # -----------------------------------------------------------------------------------
     # Model name
     parser.add_argument('-model', type=str, default='mlp', help='name of the implemented model')
-
+    parser.add_argument('--seed', type=int, default=2022)
 
     # -----------------------------------------------------------------------------------
     # experimental location parameters

@@ -1,0 +1,10 @@
+{
+    "python.languageServer": "Pylance",
+    "editor.inlineSuggest.suppressSuggestions": false,
+    "editor.quickSuggestions": {
+        "strings": "on"
+    },
+    "editor.suggest.localityBonus": true,
+    "editor.suggest.preview": true,
+    "editor.suggestSelection": "recentlyUsed"
+}

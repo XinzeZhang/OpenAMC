@@ -64,9 +64,6 @@ class Task(Opt):
         else:
             self.device = torch.device('cpu')
 
-        if fit and self.model_opts.arch == 'statistic':
-            self.device = torch.device('cpu')
-
         self.exp_dir = 'trial' if args.test == False else 'test'
 
         if args.exp_name is not None:
@@ -112,6 +109,8 @@ class Task(Opt):
         if fit:
             self.model_opts.hyper.device = self.device
             # self.tune = args.tune  # default False
+        
+            
             
     def model_import(self,):
         model = importlib.import_module(self.model_opts.import_path)
