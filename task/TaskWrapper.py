@@ -156,7 +156,7 @@ class Task(Opt):
             clogger.critical('-'*80)            
             
             model = self.model_import()
-            model = model(cid_hyper, clogger)
+            model = model(cid_hyper, clogger) #todo: check model_fit_dir in model and model trainer
 
             clogger.critical('Loading complete.')
             clogger.critical(f'Model: \n{str(model)}')
