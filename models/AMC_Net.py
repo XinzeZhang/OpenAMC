@@ -206,12 +206,11 @@ class AMC_Net(nn.Module):
         """
         docstring
         """
-        trainer = Trainer(self, train_loader, val_loader, self.hyper, self.logger)
-        trainer.loop()
+        net_trainer = Trainer(self, train_loader, val_loader, self.hyper, self.logger)
+        net_trainer.loop()
         
-        
-        pass
-    
+        return net_trainer.epochs_stats
+
     
 # if __name__ == '__main__':
 #     model = AMC_Net(11, 128, 3)

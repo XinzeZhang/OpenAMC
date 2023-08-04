@@ -56,6 +56,8 @@ class TaskDataset(Opt):
 
     def __init__(self, args=None):
         super().__init__()
+        
+        
         self.Signals = []
         self.Labels = []
         self.SNRs= []
@@ -73,13 +75,16 @@ class TaskDataset(Opt):
         
         Parameters
         ----------
+        data_name: str
         batch_size: int
         sig_len: int
         val_size: float
         test_size: float
         num_classes: int
         classes: dict
+        
         """
+        self.data_name = 'None'
         self.batch_size = 64
         self.sig_len = 128
         self.val_size = 0.2
@@ -91,6 +96,7 @@ class TaskDataset(Opt):
         """
         Split the preprocessed data, and pack them to self.train_set, self.val_set, self.test_set, self.test_idx
         """
+        
         self.train_set, self.val_set, self.test_set, self.test_idx = self.dataset_Split(Signals=self.Signals, Labels=self.Labels, snrs=self.snrs, mods=self.mods, val_size=self.val_size,test_size=self.test_size)
         return self.train_set, self.val_set, self.test_set, self.test_idx
 

@@ -20,7 +20,7 @@ def get_parser(parsing = True):
 
     # -----------------------------------------------------------------------------------
     # experimental location parameters
-    parser.add_argument('-expdatafolder', type=str, default='exp/rml16a', help='folder name of the dataset')
+    parser.add_argument('-expdatafolder', type=str, default='exp_config/rml16a', help='folder name of the dataset')
     parser.add_argument('-dataset', type=str, default='demo',help='file name of the dataset')
     parser.add_argument('-exp_name', type=str, default='unitTest', metavar='N',
                         help='exp_name  (default: mimo)')

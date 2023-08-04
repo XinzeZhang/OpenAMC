@@ -15,6 +15,7 @@ class Data(TaskDataset):
         super().__init__(opts)
     
     def rawdata_config(self) -> object:
+        self.data_name = 'RML2016.10a'
         self.batch_size = 64
         self.sig_len = 128
         
