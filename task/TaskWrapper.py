@@ -148,16 +148,28 @@ class Task(Opt):
                 # clogger.critical('-'*80)
 
             clogger.critical(
-                'For {}th-batch-trainingLoading, loading the datasets {}'.format(i, self.data_name))
+                'Loading the datasets {}'.format(self.data_name))
             clogger.critical('-'*80)            
+            clogger.critical(f"Signal_train.shape: {list(self.data_opts.train_set[0].shape)}", )
+            clogger.critical(f"Signal_val.shape: {list(self.val_set.train_set[0].shape)}")
+            clogger.critical(f"Signal_test.shape: {list(self.val_set.test_set[0].shape)}")
+            clogger.critical('-'*80)  
+            
             
             model = self.model_import()
             model = model(cid_hyper, clogger) #todo: check model_fit_dir in model and model trainer
 
-            clogger.critical('Loading complete.')
+            clogger.critical('Loading Model.')
             clogger.critical(f'Model: \n{str(model)}')
             
             train_loader, val_loader = self.data_opts.load_fitset()
+            
+            clogger.critical('Loading training set and validation set.')
+            clogger.info(f"Train_loader batch: {len(train_loader)}")
+            clogger.info(f"Val_loader batch: {len(val_loader)}")
+            clogger.critical('>'*40)
+            clogger.critical('Start fit.')
+            
             epochs_stats =  model.xfit(train_loader, val_loader) 
             # epochs_stats is a dataframe with the following columns at least
             # pd.DataFrame(
@@ -178,10 +190,14 @@ class Task(Opt):
             pre_lab_all, label_all = self.eval_testset(model)
             
             tgt_result_file = result_file if result_file is not None else self.model_result_file # add to allow the external configuration
-                
+            
+            clogger.critical('>'*40)
+            clogger.critical('End fit.')
             if innerSaving:
                 np.savez(tgt_result_file, pred = pre_lab_all, label= label_all)
-                
+                clogger.critical('Save result file to the location: {}'.format(tgt_result_file))
+            clogger.critical('-'*80)   
+        
             return pre_lab_all, label_all, epochs_stats
             
             

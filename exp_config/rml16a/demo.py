@@ -9,6 +9,8 @@ import pickle
 import numpy as np
 import torch
 
+from models._Setting import AMC_Net_base
+
 class Data(TaskDataset):
     def __init__(self, opts):
         '''Merge the input args to the self object'''
@@ -61,6 +63,14 @@ class Data(TaskDataset):
         # toDo: add if/else to auto load pre-split dataset
         
         return super().pack_dataset()
+
+class amcnet(AMC_Net_base):
+    def task_modify(self):
+        self.hyper.extend_channel = 36
+        self.hyper.latent_dim = 512
+        self.hyper.num_heads = 2
+        self.hyper.conv_chan_list = [36, 64, 128, 256]        
+        self.pretraining_file = ''
         
 if __name__ == "__main__":
     args = get_parser()
