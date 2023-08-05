@@ -117,7 +117,11 @@ class Trainer:
             if self.early_stopping.early_stop:
                 self.logger.info('Early stopping')
                 break
-
+        
+        last_model_name = self.cfg.data_name + '_' + f'{self.cfg.model_name}' + '.last.pt'
+        torch.save(self.model.state_dict(), os.path.join(
+            self.cfg.model_fit_dir, 'checkpoint', last_model_name))
+        
     @staticmethod
     def adjust_learning_rate(optimizer, gamma):
         """Sets the learning rate when we have to"""
@@ -221,9 +225,9 @@ class Trainer:
         if self.val_acc.avg >= self.best_monitor:
             self.best_monitor = self.val_acc.avg
             # toDo: change to annother location.
-            save_model_name = self.cfg.dataset + '_' + 'AMC_Net' + '.pkl'
+            best_model_name = self.cfg.data_name + '_' + f'{self.cfg.model_name}' + '.best.pt'
             torch.save(self.model.state_dict(), os.path.join(
-                self.cfg.model_dir, save_model_name))
+                self.cfg.model_fit_dir, 'checkpoint', best_model_name))
 
         self.early_stopping(self.val_loss.avg, self.model)
 
