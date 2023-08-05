@@ -1,3 +1,7 @@
+import os
+import sys
+sys.path.append(os.path.join(os.path.dirname(__file__), os.path.pardir))
+
 import torch
 import torch.nn as nn
 import math
@@ -206,10 +210,28 @@ class AMC_Net(nn.Module):
         """
         docstring
         """
-        net_trainer = Trainer(self, train_loader, val_loader, self.hyper, self.logger)
-        net_trainer.loop()
+        pretraining_tag = False
+        fit_info = None
+        if self.hyper.pretraining_file is not None:
+            if os.path.exists(self.hyper.pretraining_file):
+                try:
+                    self.logger.info(f'Finding pretraining file in the location {self.hyper.pretraining_file}')
+                    
+                    self.load_state_dict(torch.load(self.hyper.pretraining_file))
+                    
+                    self.logger.info('Successfully loading the pretraining file!')
+                    pretraining_tag = True
+                except:
+                    self.logger.exception(
+                        '{}\nGot an error on loading pretraining_file in the location: {}.\n{}'.format('!'*50, self.hyper.pretraining_file, '!'*50))
+                    raise SystemExit()
         
-        return net_trainer.epochs_stats
+        if pretraining_tag is False:
+            net_trainer = Trainer(self, train_loader, val_loader, self.hyper, self.logger)
+            net_trainer.loop()
+            fit_info = net_trainer.epochs_stats
+        
+        return fit_info
 
     def predict(self, sample):
         sample = sample.to(self.hyper.device)

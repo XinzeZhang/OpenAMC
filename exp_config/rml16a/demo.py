@@ -74,7 +74,17 @@ class amcnet(AMC_Net_base):
         
 if __name__ == "__main__":
     args = get_parser()
+    args.cuda = True
+    
+    args.expdatafolder = 'exp_config/rml16a'
+    args.exp_file= 'demo'
+    args.exp_name = 'paper.test'
+    
+    args.test = True
+    args.model = 'amcnet'
+    
     
     task = Task(args)
-    
+    task.conduct()
+    task.evaluate()
     

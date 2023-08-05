@@ -21,7 +21,7 @@ def get_parser(parsing = True):
     # -----------------------------------------------------------------------------------
     # experimental location parameters
     parser.add_argument('-expdatafolder', type=str, default='exp_config/rml16a', help='folder name of the dataset')
-    parser.add_argument('-dataset', type=str, default='demo',help='file name of the dataset')
+    parser.add_argument('-exp_file', type=str, default='demo',help='file name of the dataset')
     parser.add_argument('-exp_name', type=str, default='unitTest', metavar='N',
                         help='exp_name  (default: mimo)')
     parser.add_argument('-tag',type=str, default='', help='additional experimental model tag')
@@ -50,7 +50,7 @@ def get_parser(parsing = True):
     # parser.add_argument('-tuner_epochPerIter',type=int,default=1)
     
     if parsing:
-        params = parser.parse_args()
-        return params
+        args = parser.parse_args()
+        return args
     else:
         return parser

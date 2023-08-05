@@ -23,7 +23,7 @@ class Task(Opt):
         # self.opts.merge(args)
 
         self.exp_module_path = importlib.import_module('{}.{}'.format(
-            args.datafolder.replace('/', '.'), args.dataset))
+            args.datafolder.replace('/', '.'), args.exp_file))
         
         self.data_config(args)
         self.model_config(args)
@@ -58,19 +58,21 @@ class Task(Opt):
             self.model_opts.hyper.update(args.hyper)
 
 
-    def exp_config(self, args, fit = True):
+    def exp_config(self, args):
         cuda_exist = torch.cuda.is_available()
         if cuda_exist and args.cuda:
-            self.device = torch.device('cuda:{}'.format(args.gid))
+            self.model_opts.hyper.device = torch.device('cuda:{}'.format(args.gid))
         else:
-            self.device = torch.device('cpu')
+            self.model_opts.hyper.device = torch.device('cpu')
+
 
         self.exp_dir = 'exp_results' if args.test == False else 'exp_tempTest'
 
+        self.exp_dir = os.path.join(self.exp_dir, self.data_name)
+        
         if args.exp_name is not None:
             self.exp_dir = os.path.join(self.exp_dir, args.exp_name)
 
-        self.exp_dir = os.path.join(self.exp_dir, args.dataset)
         self.fit_dir = os.path.join(self.exp_dir, 'fit')
         self.eval_dir = os.path.join(self.exp_dir, 'eval')
 
@@ -98,8 +100,7 @@ class Task(Opt):
         #     _temp = [int(c) for c in self.cid_list]
         #     self.cid_list = _temp
 
-        if fit:
-            self.model_opts.hyper.device = self.device
+
             # self.tune = args.tune  # default False
             
     def model_import(self,):
@@ -178,11 +179,10 @@ class Task(Opt):
             #       "val_loss": self.val_loss_list,
             #       "train_acc": self.train_acc_list,
             #       "val_acc": self.val_acc_list})
-            
-            loss_dir = os.path.join(self.model_fit_dir, 'loss_curve')
-            lossfig_dir = os.path.join(loss_dir, 'figure')
-            
+                     
             if set(['val_loss','val_acc', 'train_loss', 'train_acc', 'lr_list']).issubset(epochs_stats.columns):
+                loss_dir = os.path.join(self.model_fit_dir, 'loss_curve')
+                lossfig_dir = os.path.join(loss_dir, 'figure')
                 save_training_process(epochs_stats, plot_dir=lossfig_dir)
             
             # generate the output of the testset
@@ -229,7 +229,7 @@ class Task(Opt):
                 
         return pre_lab_all, label_all
 
-    def evaluation(self, force_update=True):
+    def evaluate(self, force_update=True):
         eLogger = set_logger(os.path.join(self.eval_dir, '{}.{}.eval.log'.format(self.data_name, self.model_name)), '{}.{}'.format(
                 self.data_name, self.model_name.upper()), self.logger_level)
         
