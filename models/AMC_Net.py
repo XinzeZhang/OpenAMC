@@ -211,6 +211,11 @@ class AMC_Net(nn.Module):
         
         return net_trainer.epochs_stats
 
+    def predict(self, sample):
+        sample = sample.to(self.hyper.device)
+        logit = self.forward(sample)
+        pre_lab = torch.argmax(logit, 1).cpu()
+        return pre_lab
     
 # if __name__ == '__main__':
 #     model = AMC_Net(11, 128, 3)

@@ -97,9 +97,13 @@ class TaskDataset(Opt):
         Split the preprocessed data, and pack them to self.train_set, self.val_set, self.test_set, self.test_idx
         """
         
+        assert self.num_classes == len(self.classes.keys())
+        self.num_snrs = list(np.unique(self.snrs))
+        
         self.train_set, self.val_set, self.test_set, self.test_idx = self.dataset_Split(Signals=self.Signals, Labels=self.Labels, snrs=self.snrs, mods=self.mods, val_size=self.val_size,test_size=self.test_size)
         return self.train_set, self.val_set, self.test_set, self.test_idx
 
+        
     @staticmethod
     def dataset_Split(Signals, Labels, snrs, mods, val_size=0.2, test_size=0.2):
         global test_idx
@@ -187,7 +191,7 @@ class TaskDataset(Opt):
         Sample_list = []
         Label_list = []
         
-        for snr in self.snrs:
+        for snr in self.num_snrs:
             test_SNRs = map(lambda x: self.SNRs[x], self.test_idx)
             test_SNRs = list(test_SNRs)
             test_SNRs = np.array(test_SNRs).squeeze()

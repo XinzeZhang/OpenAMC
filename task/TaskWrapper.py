@@ -14,7 +14,8 @@ import statistics
 from tqdm import trange
 import shutil
 from task.util import os_makedirs, os_rmdirs, set_logger
-from task.TaskVisual import save_training_process
+from task.TaskVisual import save_training_process, save_confmat, save_snr_acc
+from sklearn.metrics import accuracy_score, confusion_matrix, f1_score, cohen_kappa_score
 
 class Task(Opt):
     def __init__(self, args):
@@ -76,7 +77,8 @@ class Task(Opt):
         self.model_name = '{}'.format(args.model) if args.tag == '' else '{}_{}'.format(args.model, args.tag)
 
         self.model_fit_dir = os.path.join(self.fit_dir, self.model_name)
-        self.model_eval_dir = os.path.join(self.eval_dir, self.model_name)
+        self.model_pred_dir = os.path.join(self.model_fit_dir, 'pred_results')
+        self.model_result_file = os.path.join(self.model_pred_dir, 'results.npz')
         
         if args.test and args.clean:
             os_rmdirs(self.model_fit_dir)
@@ -86,15 +88,15 @@ class Task(Opt):
         else:
             self.logger_level = 20  # equal to info
 
-        self.rep_times = args.rep_times
+        # self.rep_times = args.rep_times
 
-        self.cid_list = args.cid
+        # self.cid_list = args.cid
 
-        if self.cid_list == ['all']:
-            self.cid_list = list(range(self.rep_times))
-        else:
-            _temp = [int(c) for c in self.cid_list]
-            self.cid_list = _temp
+        # if self.cid_list == ['all']:
+        #     self.cid_list = list(range(self.rep_times))
+        # else:
+        #     _temp = [int(c) for c in self.cid_list]
+        #     self.cid_list = _temp
 
         if fit:
             self.model_opts.hyper.device = self.device
@@ -105,44 +107,38 @@ class Task(Opt):
         model = getattr(model, self.model_opts.class_name)
         return model        
     
-    def logger_config(self, dir, stage, cv):
+    def logger_config(self, dir, stage):
         log_path = os.path.join(dir, 'logs',
-                                '{}.{}.cv{}.log'.format(stage,self.data_name, cv))
-        log_name = '{}.{}.cv{}'.format(
-            self.data_name, self.model_name, cv)
+                                '{}.{}.log'.format(stage,self.data_name))
+        log_name = '{}.{}'.format(
+            self.data_name, self.model_name)
         logger = set_logger(log_path, log_name, self.logger_level)
         return logger
     
-    def conduct(self,):
-        self.pred_dir = os.path.join(self.model_fit_dir, 'pred_results')
-        
+    def conduct(self, force_update = False):
         # os_makedirs(self.model_fit_dir)
-        os_makedirs(self.pred_dir)
-        
-        for i in tqdm(self.cid_list):
-            result_file = os.path.join(self.pred_dir, 'results_{}.npy'.format(i))
-            if os.path.exists(result_file):
-                    continue
-            
-            self.conduct_iter(self, i , result_file, innerSaving=True)
-    
-    def conduct_iter(self, i, result_file, innerSaving = True):
+        os_makedirs(self.model_pred_dir)
+        # for i in tqdm(self.cid_list):
+        if not os.path.exists(self.model_result_file) or force_update:     
+            self.conduct_fit(self,self.model_result_file, innerSaving=True)
+
+    def conduct_fit(self, result_file = None, innerSaving = True):
         """
         docstring
         """
         try:
             clogger = self.logger_config(
-                self.model_fit_dir, 'train', i)
+                self.model_fit_dir, 'train')
             clogger.critical('*'*80)
-            clogger.critical('Dataset: {}\t Model:{} \t Class: {}\t Trail: {}'.format(
-                self.data_name, self.model_name, self.data_opts.num_classes, i))
+            clogger.critical('Dataset: {}\t Model:{} \t Class: {}'.format(
+                self.data_name, self.model_name, self.data_opts.num_classes))
             
             cid_hyper = Opt(self.model_opts.hyper)
             cid_hyper.num_classes = self.data_opts.num_classes
             cid_hyper.model_fit_dir = self.model_fit_dir
             cid_hyper.model_name = self.model_name
             cid_hyper.data_name = self.data_name     
-            cid_hyper.cid = i
+            # cid_hyper.cid = i
             
             #toDo: set Tune, and loading the best parameters
             # if self.tune:
@@ -177,14 +173,90 @@ class Task(Opt):
             if set(['val_loss','val_acc', 'train_loss', 'train_acc', 'lr_list']).issubset(epochs_stats.columns):
                 save_training_process(epochs_stats, plot_dir=lossfig_dir)
             
+            # generate the output of the testset
+
+            pre_lab_all, label_all = self.eval_testset(model)
             
-            
-            
-            
-            
+            tgt_result_file = result_file if result_file is not None else self.model_result_file # add to allow the external configuration
+                
+            if innerSaving:
+                np.savez(tgt_result_file, pred = pre_lab_all, label= label_all)
+                
+            return pre_lab_all, label_all, epochs_stats
             
             
         except:
             clogger.exception(
                 '{}\nGot an error on conduction.\n{}'.format('!'*50, '!'*50))
             raise SystemExit()
+
+    def eval_testset(self, model):
+        with torch.no_grad():
+            
+            test_sample_list, test_lable_list = self.data_opts.load_testset()
+
+            pre_lab_all = []
+            label_all = []
+            
+            for (Sample, Label) in zip(test_sample_list, test_lable_list):
+                pred_i = []
+                label_i = []
+                for (sample, label) in zip(Sample, Label):
+                    pre_lab = model.predict(sample)
+                    pred_i.append(pre_lab)
+                    label_i.append(label)
+                pred_i = np.concatenate(pred_i)
+                label_i = np.concatenate(label_i)
+                
+                pre_lab_all.append(pred_i)
+                label_all.append(label_i)
+                
+        return pre_lab_all, label_all
+
+    def evaluation(self, force_update=True):
+        eLogger = set_logger(os.path.join(self.eval_dir, '{}.{}.eval.log'.format(self.data_name, self.model_name)), '{}.{}'.format(
+                self.data_name, self.model_name.upper()), self.logger_level)
+        
+        self.model_eval_dir = os.path.join(self.eval_dir, self.model_name)
+        self.eval_acc_dir = os.path.join(self.model_eval_dir, 'accuracy')
+        self.eval_plot_dir = os.path.join(self.model_eval_dir, 'figures')
+        
+        os_makedirs(self.eval_acc_dir)
+        os_makedirs(self.eval_plot_dir)
+        os_makedirs(self.model_pred_dir)
+        
+        # for i in self.cid_list: # multiple cross validation in the future version
+        
+        
+        if os.path.exists(self.model_result_file) and force_update is False:
+            with np.load(self.model_result_file) as data:
+                pre_lab_all, label_all = data['pred'], data['label']
+        else:
+            pre_lab_all, label_all,_ = self.conduct_fit()
+            
+        Confmat_Set = np.zeros((len(self.data_opts.num_snrs), len(self.data_opts.num_classes), len(len(self.data_opts.num_classes))), dtype=int)
+        Accuracy_list = np.zeros(len(self.data_opts.num_snrs), dtype=float)
+        
+        for snr_i, (pred_i, label_i) in enumerate(zip(pre_lab_all, label_all)):
+            Confmat_Set[snr_i, :, :] = confusion_matrix(label_i, pred_i)
+            Accuracy_list[snr_i] = accuracy_score(label_i, pred_i)
+            
+        pre_lab_all = np.concatenate(pre_lab_all)
+        label_all = np.concatenate(label_all)
+        
+        F1_score = f1_score(label_all, pre_lab_all, average='macro')
+        kappa = cohen_kappa_score(label_all, pre_lab_all)
+        acc = np.mean(Accuracy_list)
+        
+        eLogger.info(f'overall accuracy is: {acc}')
+        eLogger.info(f'macro F1-score is: {F1_score}')
+        eLogger.info(f'kappa coefficient is: {kappa}')
+            
+        save_confmat(Confmat_Set, self.data_opts.num_snrs, self.data_opts.num_classes, self.eval_plot_dir)
+        
+        
+        Accuracy_Mods = save_snr_acc(Accuracy_list, Confmat_Set, self.data_opts.num_snrs, self.data_name, self.data_opts.classes.keys(), self.eval_plot_dir)
+        
+        tgt_acc_file = os.path.join(self.eval_acc_dir, 'acc.npz')
+        np.savez(tgt_acc_file, acc_overall = Accuracy_list, acc_mods= Accuracy_Mods)
+        eLogger.info('Save accuracy file to the location: {}'.format(tgt_acc_file))
