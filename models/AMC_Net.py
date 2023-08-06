@@ -193,6 +193,8 @@ class AMC_Net(nn.Module):
             nn.PReLU(),
             nn.Linear(self.latent_dim, self.num_classes)
         )
+        
+        self.to(self.hyper.device)
 
     def forward(self, x):
         # x = x / x.norm(p=2, dim=-1, keepdim=True)
@@ -216,7 +218,8 @@ class AMC_Net(nn.Module):
             try:
                 self.logger.info(f'Finding pretraining file in the location {self.hyper.pretraining_file}')
                 
-                self.load_state_dict(torch.load(self.hyper.pretraining_file))
+                model_state = torch.load(self.hyper.pretraining_file)
+                self.load_state_dict(model_state)
                 
                 self.logger.info('Successfully loading the pretraining file!')
                 pretraining_tag = True

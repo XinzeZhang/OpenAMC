@@ -209,6 +209,9 @@ class TaskDataset(Opt):
         Sample_list = []
         Label_list = []
         
+        if 'num_snrs' not in self.dict:
+            self.num_snrs = list(np.unique(self.snrs))
+            
         for snr in self.num_snrs:
             test_SNRs = map(lambda x: self.SNRs[x], self.test_idx)
             test_SNRs = list(test_SNRs)

@@ -132,6 +132,9 @@ class Task(Opt):
         self.data_opts.info.seed = self.seed
         self.data_opts.load_rawdata(logger = logger)
         self.data_opts.pack_dataset(logger = logger)
+        
+        self.data_opts.num_snrs = list(np.unique(self.data_opts.snrs))
+        
         logger.critical('-'*80)            
         logger.critical(f"Signal_train.shape: {list(self.data_opts.train_set[0].shape)}", )
         logger.critical(f"Signal_val.shape: {list(self.data_opts.val_set[0].shape)}")
@@ -223,7 +226,6 @@ class Task(Opt):
         
             return pre_lab_all, label_all, epochs_stats
             
-            
         except:
             clogger.exception(
                 '{}\nGot an error on conduction.\n{}'.format('!'*50, '!'*50))
@@ -232,6 +234,9 @@ class Task(Opt):
     def eval_testset(self, model):
         with torch.no_grad():
             
+            if self.model_opts.arch == 'torch_nn':
+                model.eval()
+                       
             test_sample_list, test_lable_list = self.data_opts.load_testset()
 
             pre_lab_all = []
@@ -252,7 +257,7 @@ class Task(Opt):
                 
         return pre_lab_all, label_all
 
-    def evaluate(self, force_update=False):
+    def evaluate(self, force_update=False, ave_confMax = False):
         eLogger = set_logger(os.path.join(self.eval_dir, '{}.{}.eval.log'.format(self.data_name, self.model_name)), '{}.{}'.format(
                 self.data_name, self.model_name.upper()), self.logger_level)
         
@@ -276,8 +281,8 @@ class Task(Opt):
         else:
             pre_lab_all, label_all,_ = self.conduct_fit()
         
-        self.data_opts.num_snrs = list(np.unique(self.data_opts.snrs))
-        Confmat_Set = np.zeros((len(self.data_opts.num_snrs), len(self.data_opts.num_classes), len(len(self.data_opts.num_classes))), dtype=int)
+        
+        Confmat_Set = np.zeros((len(self.data_opts.num_snrs), self.data_opts.num_classes, self.data_opts.num_classes), dtype=int)
         Accuracy_list = np.zeros(len(self.data_opts.num_snrs), dtype=float)
         
         for snr_i, (pred_i, label_i) in enumerate(zip(pre_lab_all, label_all)):
@@ -294,8 +299,9 @@ class Task(Opt):
         eLogger.info(f'overall accuracy is: {acc}')
         eLogger.info(f'macro F1-score is: {F1_score}')
         eLogger.info(f'kappa coefficient is: {kappa}')
-            
-        save_confmat(Confmat_Set, self.data_opts.num_snrs, self.data_opts.num_classes, self.eval_plot_dir)
+        
+        if ave_confMax:
+            save_confmat(Confmat_Set, self.data_opts.num_snrs, self.data_opts.classes, self.eval_plot_dir)
         
         
         Accuracy_Mods = save_snr_acc(Accuracy_list, Confmat_Set, self.data_opts.num_snrs, self.data_name, self.data_opts.classes.keys(), self.eval_plot_dir)
@@ -320,5 +326,5 @@ if __name__ == "__main__":
     
     task = Task(args)
     task.conduct()
-    task.evaluate()
+    task.evaluate(force_update=True)
             

@@ -70,8 +70,8 @@ class Data(TaskDataset):
             try:
                 split_data = torch.load(pre_data_file)
                 self.train_set =split_data['train_set']
-                self.val_set = split_data['val_set']
                 self.test_set = split_data['test_set']
+                self.val_set = split_data['val_set']
                 self.test_idx = split_data['test_idx']
                 
                 if logger is not None:

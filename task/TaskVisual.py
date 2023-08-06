@@ -44,13 +44,13 @@ def save_training_process(epochs_stats, plot_dir):
     plt.show()
     plt.close()
 
-def save_confmat(Confmat_Set, num_snrs, num_classes, plot_dir ):
+def save_confmat(Confmat_Set, num_snrs, classes, plot_dir ):
     os_makedirs(plot_dir)
     for i, snr in enumerate(num_snrs):
         fig = plt.figure()
         df_cm = pd.DataFrame(Confmat_Set[i],
-                             index=num_classes,
-                             columns=num_classes)
+                             index=classes,
+                             columns=classes)
         heatmap = sns.heatmap(df_cm, annot=True, fmt="d", cmap="Blues")
         heatmap.yaxis.set_ticklabels(
             heatmap.yaxis.get_ticklabels(), rotation=0, ha='right')
@@ -87,7 +87,7 @@ def save_snr_acc(Accuracy_list, Confmat_Set, num_snrs, data_name, class_names, p
     plt.ylabel("Overall Accuracy")
     plt.title(f"Overall Accuracy on {data_name} dataset")
     plt.grid()
-    plt.legend(class_names.keys())
+    plt.legend(class_names)
     plt.savefig(acc_dir + '/' + 'acc_mods.svg', format='svg', dpi=150)
     plt.close()
     
