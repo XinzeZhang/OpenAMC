@@ -4,11 +4,11 @@ import time
 import pandas as pd
 import torch
 from torch import optim, nn
-from tqdm import tqdm,trange
+from tqdm import tqdm, trange
 from torch.optim import lr_scheduler
 
 import numpy as np
-
+from task.util import os_makedirs
 
 class AverageMeter(object):
     """Computes and stores the average and current value"""
@@ -97,16 +97,22 @@ class Trainer:
         self.criterion = None
         self.optimizer = None
 
-        self.model = model
         self.train_loader = train_loader
         self.val_loader = val_loader
         self.cfg = cfg
         self.logger = logger
+        self.model = model.to(self.cfg.device)
 
         self.iter = 0
 
     def loop(self):
+        
+        self.checkpoint_folder = os.path.join(
+            self.cfg.model_fit_dir, 'checkpoint')
+        os_makedirs(self.checkpoint_folder)
+        
         self.before_train()
+        
         for self.iter in trange(0, self.cfg.epochs):
             self.before_train_step()
             self.run_train_step()
@@ -117,11 +123,12 @@ class Trainer:
             if self.early_stopping.early_stop:
                 self.logger.info('Early stopping')
                 break
-        
-        last_model_name = self.cfg.data_name + '_' + f'{self.cfg.model_name}' + '.last.pt'
+
+        last_model_name = self.cfg.data_name + '_' + \
+            f'{self.cfg.model_name}' + '.last.pt'
         torch.save(self.model.state_dict(), os.path.join(
-            self.cfg.model_fit_dir, 'checkpoint', last_model_name))
-        
+            self.checkpoint_folder,last_model_name))
+
     @staticmethod
     def adjust_learning_rate(optimizer, gamma):
         """Sets the learning rate when we have to"""
@@ -175,13 +182,18 @@ class Trainer:
                 pbar.set_postfix(**{'train_loss': self.train_loss.avg,
                                     'train_acc': self.train_acc.avg})
                 pbar.update(1)
+                
+        return self.train_loss.avg, self.train_acc.avg
+                    
 
     def after_train_step(self):
         self.lr_list.append(self.optimizer.param_groups[0]['lr'])
-        self.logger.info(
-            '====> Epoch: {} Time: {:.2f} Train Loss: {} Train acc: {} lr: {:.5f}'.format(self.iter,time.time() - self.t_s,self.train_loss.avg,self.train_acc.avg,self.lr_list[-1]))
+        self.logger.info('====> Epoch: {} Time: {:.2f} Train Loss: {} Train acc: {} lr: {:.5f}'.format(
+            self.iter, time.time() - self.t_s, self.train_loss.avg, self.train_acc.avg, self.lr_list[-1]))
         self.train_loss_list.append(self.train_loss.avg)
         self.train_acc_list.append(self.train_acc.avg)
+        
+
 
     def before_val_step(self):
         self.model.eval()
@@ -215,19 +227,20 @@ class Trainer:
                                         'val_acc': self.val_acc.avg})
                     pbar.update(1)
 
+        return self.val_loss.avg, self.val_acc.avg
+                        
+
     def after_val_step(self):
         self.logger.info(
-            '====> Epoch: {} Time: {:.2f} Val Loss: {} Val acc: {}'.format(self.iter,
-                                                                           time.time() - self.t_s,
-                                                                           self.val_loss.avg,
-                                                                           self.val_acc.avg))
-        
+            '====> Epoch: {} Time: {:.2f} Val Loss: {:.6E} Val acc: {:6E}'.format(self.iter, time.time() - self.t_s, self.val_loss.avg, self.val_acc.avg))
+
         if self.val_acc.avg >= self.best_monitor:
             self.best_monitor = self.val_acc.avg
             # toDo: change to annother location.
-            best_model_name = self.cfg.data_name + '_' + f'{self.cfg.model_name}' + '.best.pt'
+            best_model_name = self.cfg.data_name + '_' + \
+                f'{self.cfg.model_name}' + '.best.pt'
             torch.save(self.model.state_dict(), os.path.join(
-                self.cfg.model_fit_dir, 'checkpoint', best_model_name))
+                self.checkpoint_folder, best_model_name))
 
         self.early_stopping(self.val_loss.avg, self.model)
 

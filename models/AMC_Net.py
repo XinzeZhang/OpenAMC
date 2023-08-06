@@ -212,19 +212,18 @@ class AMC_Net(nn.Module):
         """
         pretraining_tag = False
         fit_info = None
-        if self.hyper.pretraining_file is not None:
-            if os.path.exists(self.hyper.pretraining_file):
-                try:
-                    self.logger.info(f'Finding pretraining file in the location {self.hyper.pretraining_file}')
-                    
-                    self.load_state_dict(torch.load(self.hyper.pretraining_file))
-                    
-                    self.logger.info('Successfully loading the pretraining file!')
-                    pretraining_tag = True
-                except:
-                    self.logger.exception(
-                        '{}\nGot an error on loading pretraining_file in the location: {}.\n{}'.format('!'*50, self.hyper.pretraining_file, '!'*50))
-                    raise SystemExit()
+        if 'pretraining_file' in self.hyper.dict and self.hyper.pretraining_file is not None and os.path.exists(self.hyper.pretraining_file):
+            try:
+                self.logger.info(f'Finding pretraining file in the location {self.hyper.pretraining_file}')
+                
+                self.load_state_dict(torch.load(self.hyper.pretraining_file))
+                
+                self.logger.info('Successfully loading the pretraining file!')
+                pretraining_tag = True
+            except:
+                self.logger.exception(
+                    '{}\nGot an error on loading pretraining_file in the location: {}.\n{}'.format('!'*50, self.hyper.pretraining_file, '!'*50))
+                raise SystemExit()
         
         if pretraining_tag is False:
             net_trainer = Trainer(self, train_loader, val_loader, self.hyper, self.logger)

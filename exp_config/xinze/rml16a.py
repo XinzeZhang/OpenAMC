@@ -27,8 +27,12 @@ class Data(TaskDataset):
         self.num_classes = 11
         self.classes = {b'QAM16': 0, b'QAM64': 1, b'8PSK': 2, b'WBFM': 3, b'BPSK': 4,b'CPFSK': 5, b'AM-DSB': 6, b'GFSK': 7, b'PAM4': 8, b'QPSK': 9, b'AM-SSB': 10}
         
-        
+    def load_rawdata(self, logger = None):
         file_pointer = 'data/RML2016.10a/RML2016.10a_dict.pkl'
+        
+        if logger is not None:
+            logger.info('*'*80)
+            logger.info(f'Loading raw file in the location: {file_pointer}')
         
         Signals = []
         Labels = []
@@ -56,13 +60,28 @@ class Data(TaskDataset):
         self.snrs = snrs
         self.mods = mods
 
-    def pack_dataset(self):
+    def pack_dataset(self, logger= None):
         """
         Split the preprocessed data, and pack them to self.train_set, self.val_set, self.test_set, self.test_idx
         """
         # toDo: add if/else to auto load pre-split dataset
-        
-        return super().pack_dataset()
+        pre_data_file = 'data/RML2016.10a/RML2016.10a_dict.split.pt'
+        if os.path.exists(pre_data_file):
+            try:
+                split_data = torch.load(pre_data_file)
+                self.train_set =split_data['train_set']
+                self.val_set = split_data['val_set']
+                self.test_set = split_data['test_set']
+                self.test_idx = split_data['test_idx']
+                
+                if logger is not None:
+                    logger.info(f'Loading pre-split file in the location: {pre_data_file}')
+                
+                return self.train_set, self.val_set, self.test_set, self.test_idx
+            except:
+                raise ValueError(f'Error when loading pre-processed datafile in the location: {pre_data_file}')
+        else:
+            return super().pack_dataset()
 
 class amcnet(AMC_Net_base):
     def task_modify(self):
@@ -70,7 +89,7 @@ class amcnet(AMC_Net_base):
         self.hyper.latent_dim = 512
         self.hyper.num_heads = 2
         self.hyper.conv_chan_list = [36, 64, 128, 256]        
-        self.pretraining_file = ''
+        self.hyper.pretraining_file = 'exp_tempTest/RML2016.10a/paper.test/fit/amcnet/checkpoint/RML2016.10a_amcnet.best.pt'
         
 if __name__ == "__main__":
     args = get_parser()

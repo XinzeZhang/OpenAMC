@@ -6,6 +6,7 @@ from tqdm.std import tqdm
 import importlib
 
 from task.TaskLoader import Opt
+from task.TaskParser import get_parser
 
 import torch
 import numpy as np
@@ -13,7 +14,7 @@ import statistics
 
 from tqdm import trange
 import shutil
-from task.util import os_makedirs, os_rmdirs, set_logger
+from task.util import os_makedirs, os_rmdirs, set_logger, fix_seed
 from task.TaskVisual import save_training_process, save_confmat, save_snr_acc
 from sklearn.metrics import accuracy_score, confusion_matrix, f1_score, cohen_kappa_score
 
@@ -21,13 +22,17 @@ class Task(Opt):
     def __init__(self, args):
         # self.opts = Opt()
         # self.opts.merge(args)
+        self.seed = args.seed
+        fix_seed(args.seed)
 
         self.exp_module_path = importlib.import_module('{}.{}'.format(
-            args.datafolder.replace('/', '.'), args.exp_file))
+            args.exp_config.replace('/', '.'), args.exp_file))
         
+
         self.data_config(args)
         self.model_config(args)
         self.exp_config(args)
+        self.data_statue = False
         
     def data_config(self, args):
         # data_opts = getattr(self.exp_module_path, args.dataset + '_data')
@@ -116,20 +121,41 @@ class Task(Opt):
         logger = set_logger(log_path, log_name, self.logger_level)
         return logger
     
-    def conduct(self, force_update = False):
-        # os_makedirs(self.model_fit_dir)
-        os_makedirs(self.model_pred_dir)
-        # for i in tqdm(self.cid_list):
-        if not os.path.exists(self.model_result_file) or force_update:     
-            self.conduct_fit(self,self.model_result_file, innerSaving=True)
-
-    def conduct_fit(self, result_file = None, innerSaving = True):
+    def load_data(self, logger= None):
         """
         docstring
         """
-        try:
-            clogger = self.logger_config(
+        if logger is None:
+            logger = self.logger_config(self.model_fit_dir, 'data')
+        logger.critical(
+            'Loading the datasets {}'.format(self.data_name))
+        self.data_opts.info.seed = self.seed
+        self.data_opts.load_rawdata(logger = logger)
+        self.data_opts.pack_dataset(logger = logger)
+        logger.critical('-'*80)            
+        logger.critical(f"Signal_train.shape: {list(self.data_opts.train_set[0].shape)}", )
+        logger.critical(f"Signal_val.shape: {list(self.data_opts.val_set[0].shape)}")
+        logger.critical(f"Signal_test.shape: {list(self.data_opts.test_set[0].shape)}")
+        self.data_statue = True
+    
+    def conduct(self, force_update = False):
+        # os_makedirs(self.model_fit_dir)
+        os_makedirs(self.model_pred_dir)
+        
+        task_logger= self.logger_config(
                 self.model_fit_dir, 'train')
+        self.load_data(logger=task_logger)
+        
+        # for i in tqdm(self.cid_list):
+        if not os.path.exists(self.model_result_file) or force_update:     
+            self.conduct_fit(clogger= task_logger,result_file = self.model_result_file)
+
+    def conduct_fit(self, clogger = None, result_file = None, innerSaving = True):
+        try:
+            if clogger is None:
+                clogger = self.logger_config(
+                    self.model_fit_dir, 'train')
+                        
             clogger.critical('*'*80)
             clogger.critical('Dataset: {}\t Model:{} \t Class: {}'.format(
                 self.data_name, self.model_name, self.data_opts.num_classes))
@@ -148,20 +174,17 @@ class Task(Opt):
                 # clogger.info("Updating tuning result complete.")
                 # clogger.critical('-'*80)
 
-            clogger.critical(
-                'Loading the datasets {}'.format(self.data_name))
-            clogger.critical('-'*80)            
-            clogger.critical(f"Signal_train.shape: {list(self.data_opts.train_set[0].shape)}", )
-            clogger.critical(f"Signal_val.shape: {list(self.val_set.train_set[0].shape)}")
-            clogger.critical(f"Signal_test.shape: {list(self.val_set.test_set[0].shape)}")
-            clogger.critical('-'*80)  
-            
             
             model = self.model_import()
             model = model(cid_hyper, clogger) #todo: check model_fit_dir in model and model trainer
 
             clogger.critical('Loading Model.')
             clogger.critical(f'Model: \n{str(model)}')
+
+            if self.model_opts.arch == 'torch_nn':
+                clogger.info(">>> Total params: {:.2f}M".format(
+                    sum(p.numel() for p in list(model.parameters())) / 1000000.0))         
+            
             
             train_loader, val_loader = self.data_opts.load_fitset()
             
@@ -180,7 +203,7 @@ class Task(Opt):
             #       "train_acc": self.train_acc_list,
             #       "val_acc": self.val_acc_list})
                      
-            if set(['val_loss','val_acc', 'train_loss', 'train_acc', 'lr_list']).issubset(epochs_stats.columns):
+            if epochs_stats is not None and set(['val_loss','val_acc', 'train_loss', 'train_acc', 'lr_list']).issubset(epochs_stats.columns):
                 loss_dir = os.path.join(self.model_fit_dir, 'loss_curve')
                 lossfig_dir = os.path.join(loss_dir, 'figure')
                 save_training_process(epochs_stats, plot_dir=lossfig_dir)
@@ -229,9 +252,12 @@ class Task(Opt):
                 
         return pre_lab_all, label_all
 
-    def evaluate(self, force_update=True):
+    def evaluate(self, force_update=False):
         eLogger = set_logger(os.path.join(self.eval_dir, '{}.{}.eval.log'.format(self.data_name, self.model_name)), '{}.{}'.format(
                 self.data_name, self.model_name.upper()), self.logger_level)
+        
+        if self.data_statue is False:
+            self.load_data(logger=eLogger)
         
         self.model_eval_dir = os.path.join(self.eval_dir, self.model_name)
         self.eval_acc_dir = os.path.join(self.model_eval_dir, 'accuracy')
@@ -249,7 +275,8 @@ class Task(Opt):
                 pre_lab_all, label_all = data['pred'], data['label']
         else:
             pre_lab_all, label_all,_ = self.conduct_fit()
-            
+        
+        self.data_opts.num_snrs = list(np.unique(self.data_opts.snrs))
         Confmat_Set = np.zeros((len(self.data_opts.num_snrs), len(self.data_opts.num_classes), len(len(self.data_opts.num_classes))), dtype=int)
         Accuracy_list = np.zeros(len(self.data_opts.num_snrs), dtype=float)
         
@@ -276,3 +303,22 @@ class Task(Opt):
         tgt_acc_file = os.path.join(self.eval_acc_dir, 'acc.npz')
         np.savez(tgt_acc_file, acc_overall = Accuracy_list, acc_mods= Accuracy_Mods)
         eLogger.info('Save accuracy file to the location: {}'.format(tgt_acc_file))
+
+
+if __name__ == "__main__":
+    args = get_parser()
+    args.cuda = True
+    
+    args.exp_config = 'exp_config/xinze'
+    args.exp_file= 'rml16a'
+    args.exp_name = 'paper.test'
+    
+    args.test = True
+    args.clean = False
+    args.model = 'amcnet'
+    
+    
+    task = Task(args)
+    task.conduct()
+    task.evaluate()
+            

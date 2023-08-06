@@ -5,6 +5,8 @@
 
 ### personal ###
 data/
+exp_tempTest/
+exp_results/
 
 ### JupyterNotebooks ###
 # gitignore template for Jupyter Notebooks

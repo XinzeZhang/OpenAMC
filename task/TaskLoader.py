@@ -66,8 +66,18 @@ class TaskDataset(Opt):
         
         self.num_workers = 0 # used in func: self.load_dataset 
         
+        
         self.rawdata_config()
-        self.pack_dataset()
+        assert self.num_classes == len(self.classes.keys())
+        # self.num_snrs = list(np.unique(self.snrs))
+        
+        # self.load_rawdata()
+        # self.pack_dataset()
+        self.pack_info()
+
+    def pack_info(self):
+        self.info = Opt()
+        self.info.merge(self, ['data_name', 'batch_size', 'sig_len', 'num_classes'])
 
     def rawdata_config(self,): 
         """
@@ -85,20 +95,28 @@ class TaskDataset(Opt):
         
         """
         self.data_name = 'None'
-        self.batch_size = 64
-        self.sig_len = 128
         self.val_size = 0.2
         self.test_size = 0.2
+        self.batch_size = 64
+        self.sig_len = 128
         self.num_classes = 0
         self.classes = {}
 
-    def pack_dataset(self,):
+
+
+    def load_rawdata(self, logger = None):
+        """
+        Loading the rawdata, personalized by args.exp_file in the args.exp_config
+        """
+        pass
+    
+    def pack_dataset(self, logger = None):
         """
         Split the preprocessed data, and pack them to self.train_set, self.val_set, self.test_set, self.test_idx
         """
-        
-        assert self.num_classes == len(self.classes.keys())
-        self.num_snrs = list(np.unique(self.snrs))
+        if logger is not None:
+            logger.info(f'Using the random seed: {self.info.seed}')
+            logger.info('Split the dataset to training set, validation set, and test set with the ration of {:.2f}, {:.2f}, and {:.2f}'.format(1- self.test_size - self.val_size, self.val_size, self.test_size))
         
         self.train_set, self.val_set, self.test_set, self.test_idx = self.dataset_Split(Signals=self.Signals, Labels=self.Labels, snrs=self.snrs, mods=self.mods, val_size=self.val_size,test_size=self.test_size)
         return self.train_set, self.val_set, self.test_set, self.test_idx

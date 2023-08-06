@@ -5,8 +5,9 @@ from ray import tune
 class nn_base(Opt):
     def __init__(self):
         super().__init__()
-        self.hyper = Opt()
         
+        self.arch = 'torch_nn'
+        self.hyper = Opt()
         self.tuner = Opt()
         self.tuning = Opt()
 
@@ -78,7 +79,7 @@ class AMC_Net_base(nn_base):
         self.class_name = 'AMC_Net'
 
     def hyper_init(self):        
-        self.hyper.epoch = 100
+        self.hyper.epochs = 100
         self.hyper.patience = 10
         self.hyper.milestone_step = 3
         self.hyper.gamma = 0.1

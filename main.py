@@ -5,11 +5,13 @@ if __name__ == "__main__":
     args = get_parser()
     args.cuda = True
     
-    args.expdatafolder = 'exp_config/xinze'
+    args.exp_config = 'exp_config/xinze'
     args.exp_file= 'rml16a'
     args.exp_name = 'paper.test'
     
     args.test = True
+    args.clean = False
+    
     args.model = 'amcnet'
     
     

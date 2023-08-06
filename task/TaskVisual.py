@@ -2,6 +2,7 @@ import os
 import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), os.path.pardir))
 
+from task.util import os_makedirs
 import numpy as np
 from matplotlib import pyplot as plt
 import pandas as pd
@@ -9,6 +10,8 @@ import seaborn as sns
 
 
 def save_training_process(epochs_stats, plot_dir):
+    
+    os_makedirs(plot_dir)
     fig1 = plt.figure(1)
     plt.plot(epochs_stats.epoch, epochs_stats.lr_list)
     plt.xlabel("epoch")
@@ -42,6 +45,7 @@ def save_training_process(epochs_stats, plot_dir):
     plt.close()
 
 def save_confmat(Confmat_Set, num_snrs, num_classes, plot_dir ):
+    os_makedirs(plot_dir)
     for i, snr in enumerate(num_snrs):
         fig = plt.figure()
         df_cm = pd.DataFrame(Confmat_Set[i],
