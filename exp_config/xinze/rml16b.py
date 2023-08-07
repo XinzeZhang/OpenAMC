@@ -17,19 +17,18 @@ class Data(TaskDataset):
         super().__init__(opts)
     
     def rawdata_config(self) -> object:
-        self.data_name = 'RML2016.10a'
+        self.data_name = 'RML2016.10b'
         self.batch_size = 64
         self.sig_len = 128
         
         self.val_size = 0.2
         self.test_size = 0.2
         
-        self.classes = {b'QAM16': 0, b'QAM64': 1, b'8PSK': 2, b'WBFM': 3, b'BPSK': 4,b'CPFSK': 5, b'AM-DSB': 6, b'GFSK': 7, b'PAM4': 8, b'QPSK': 9, b'AM-SSB': 10}
-        
-        self.post_data_file = 'data/RML2016.10a/RML2016.10a_dict.split.pt'
+        self.classes = {b'QAM16': 0, b'QAM64': 1, b'8PSK': 2, b'WBFM': 3, b'BPSK': 4, b'CPFSK': 5, b'AM-DSB': 6, b'GFSK': 7, b'PAM4': 8, b'QPSK': 9}
+        self.post_data_file = 'data/RML2016.10b/RML2016.10b_dict.split.pt'
         
     def load_rawdata(self, logger = None):
-        file_pointer = 'data/RML2016.10a/RML2016.10a_dict.pkl'
+        file_pointer = 'data/RML2016.10b/RML2016.10b.dat'
         
         if logger is not None:
             logger.info('*'*80 + '\n' +f'Loading raw file in the location: {file_pointer}')
@@ -63,9 +62,8 @@ class amcnet(AMC_Net_base):
         self.hyper.latent_dim = 512
         self.hyper.num_heads = 2
         self.hyper.conv_chan_list = [36, 64, 128, 256]        
-        self.hyper.pretraining_file = 'data/RML2016.10a/pretrain_models/2016.10a_AMC_Net.pt'
+        self.hyper.pretraining_file = 'data/RML2016.10b/pretrain_models/2016.10b_AMC_Net.pt'
     
-
 class awn(AWN_base):
     def task_modify(self):
         self.hyper.num_level = 1
@@ -74,7 +72,8 @@ class awn(AWN_base):
         self.hyper.kernel_size = 3
         self.hyper.in_channels = 64
         self.hyper.latent_dim = 320    
-        self.hyper.pretraining_file = 'data/RML2016.10a/pretrain_models/2016.10a_AWN.pt'
+        self.hyper.pretraining_file = 'data/RML2016.10b/pretrain_models/2016.10b_AWN.pt'
+
     
 if __name__ == "__main__":
     args = get_parser()

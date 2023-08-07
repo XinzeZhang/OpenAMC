@@ -3,6 +3,7 @@ import copy
 import numpy as np
 import torch
 import torch.utils.data as Data
+import os
 
 class Opt(object):
     def __init__(self, init=None):
@@ -65,10 +66,10 @@ class TaskDataset(Opt):
         self.mods = []
         
         self.num_workers = 0 # used in func: self.load_dataset 
-        
+        self.post_data_file = ''
         
         self.rawdata_config()
-        assert self.num_classes == len(self.classes.keys())
+        self.num_classes = len(self.classes.keys())
         # self.num_snrs = list(np.unique(self.snrs))
         
         # self.load_rawdata()
@@ -77,7 +78,7 @@ class TaskDataset(Opt):
 
     def pack_info(self):
         self.info = Opt()
-        self.info.merge(self, ['data_name', 'batch_size', 'sig_len', 'num_classes'])
+        self.info.merge(self, ['data_name', 'batch_size', 'sig_len', 'num_classes', 'post_data_file'])
 
     def rawdata_config(self,): 
         """
@@ -103,7 +104,6 @@ class TaskDataset(Opt):
         self.classes = {}
 
 
-
     def load_rawdata(self, logger = None):
         """
         Loading the rawdata, personalized by args.exp_file in the args.exp_config
@@ -114,11 +114,34 @@ class TaskDataset(Opt):
         """
         Split the preprocessed data, and pack them to self.train_set, self.val_set, self.test_set, self.test_idx
         """
-        if logger is not None:
-            logger.info(f'Using the random seed: {self.info.seed}')
-            logger.info('Split the dataset to training set, validation set, and test set with the ration of {:.2f}, {:.2f}, and {:.2f}'.format(1- self.test_size - self.val_size, self.val_size, self.test_size))
+        if os.path.exists(self.info.post_data_file):
+            try:
+                split_data = torch.load(self.info.post_data_file)
+                self.train_set =split_data['train_set']
+                self.test_set = split_data['test_set']
+                self.val_set = split_data['val_set']
+                self.test_idx = split_data['test_idx']
+                self.SNRs = split_data['SNRs']
+                self.snrs = split_data['snrs']
+                self.mods = split_data['mods']
+                
+                if logger is not None:
+                    logger.info(f'Loading pre-split file in the location: {self.info.post_data_file}')
+                
+            except:
+                raise ValueError(f'Error when loading pre-processed datafile in the location: {self.info.post_data_file}')
         
-        self.train_set, self.val_set, self.test_set, self.test_idx = self.dataset_Split(Signals=self.Signals, Labels=self.Labels, snrs=self.snrs, mods=self.mods, val_size=self.val_size,test_size=self.test_size)
+        else:
+            Signals, Labels, SNRs, snrs, mods = self.load_rawdata(logger)
+            self.SNRs= SNRs
+            self.snrs = snrs
+            self.mods = mods
+            
+            if logger is not None:
+                logger.info(f'Using the random seed: {self.info.seed}')
+                logger.info('Split the dataset to training set, validation set, and test set with the ration of {:.2f}, {:.2f}, and {:.2f}'.format(1- self.test_size - self.val_size, self.val_size, self.test_size))
+            
+            self.train_set, self.val_set, self.test_set, self.test_idx = self.dataset_Split(Signals=Signals, Labels=Labels, snrs=self.snrs, mods=self.mods, val_size=self.val_size,test_size=self.test_size)
         return self.train_set, self.val_set, self.test_set, self.test_idx
 
         

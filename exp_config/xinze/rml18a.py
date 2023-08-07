@@ -8,8 +8,11 @@ from task.TaskLoader import TaskDataset
 import pickle
 import numpy as np
 import torch
+import h5py
 
 from models._Setting import AMC_Net_base, AWN_base
+
+
 
 class Data(TaskDataset):
     def __init__(self, opts):
@@ -17,45 +20,41 @@ class Data(TaskDataset):
         super().__init__(opts)
     
     def rawdata_config(self) -> object:
-        self.data_name = 'RML2016.10a'
-        self.batch_size = 64
-        self.sig_len = 128
+        self.data_name = 'RML2018.01a'
+        self.batch_size = 512
+        self.sig_len = 1024
         
         self.val_size = 0.2
         self.test_size = 0.2
         
-        self.classes = {b'QAM16': 0, b'QAM64': 1, b'8PSK': 2, b'WBFM': 3, b'BPSK': 4,b'CPFSK': 5, b'AM-DSB': 6, b'GFSK': 7, b'PAM4': 8, b'QPSK': 9, b'AM-SSB': 10}
-        
-        self.post_data_file = 'data/RML2016.10a/RML2016.10a_dict.split.pt'
+        self.num_classes = 24
+        self.classes = {b'00K': 0, b'4ASK': 1, b'8ASK': 2, b'BPSK': 3, b'QPSK': 4, b'8PSK': 5, b'16PSK': 6, b'32PSK': 7, b'16APSK': 8, b'32APSK': 9,b'64APSK': 10, b'128APSK': 11, b'16QAM': 12, b'32QAM': 13, b'64QAM': 14, b'128QAM': 15, b'256QAM': 16, b'AM-SSB-WC': 17, b'AM-SSB-SC': 18,b'AM-DSB-WC': 19, b'AM-DSB-SC': 20, b'FM': 21, b'GMSK': 22, b'OQPSK': 23}
+        self.post_data_file = 'data/RML2018.01a/RML2018.01a_dict.split.pt'
         
     def load_rawdata(self, logger = None):
-        file_pointer = 'data/RML2016.10a/RML2016.10a_dict.pkl'
+        file_pointer = 'data/RML2018.01a/GOLD_XYZ_OSC.0001_1024.hdf5'
         
         if logger is not None:
             logger.info('*'*80 + '\n' +f'Loading raw file in the location: {file_pointer}')
         
-        Signals = []
-        Labels = []
-        SNRs = []
+        Signals, Labels, SNRs  = [], [], []
         
-        Set = pickle.load(open(file_pointer, 'rb'), encoding='bytes')
-        snrs, mods = map(lambda j: sorted(list(set(map(lambda x: x[j], Set.keys())))), [1, 0])
-        for mod in mods:
-            for snr in snrs:
-                Signals.append(Set[(mod, snr)])
-                for i in range(Set[(mod, snr)].shape[0]):
-                    Labels.append(mod)
-                    SNRs.append(snr)
-                    
-        Signals = np.vstack(Signals)
-        Signals = torch.from_numpy(Signals.astype(np.float32))
+        f = h5py.File(file_pointer)
+        Signals, Labels, SNRs  = f['X'][:], f['Y'][:], f['Z'][:]
+        f.close()
 
-        Labels = [self.classes[i] for i in Labels]  # mapping modulation formats(str) to int
+        Signals = torch.from_numpy(Signals.astype(np.float32))
+        Signals = Signals.permute(0, 2, 1)  # X:(2555904, 2, 1024)
+
+        SNRs = SNRs.tolist()
+        snrs = list(np.unique(SNRs))
+        mods = list(self.classes.keys())
+
+        Labels = np.argwhere(Labels == 1)[:, 1]
         Labels = np.array(Labels, dtype=np.int64)
         Labels = torch.from_numpy(Labels)
         
         return Signals, Labels, SNRs, snrs, mods
-
 
 class amcnet(AMC_Net_base):
     def task_modify(self):
@@ -63,18 +62,17 @@ class amcnet(AMC_Net_base):
         self.hyper.latent_dim = 512
         self.hyper.num_heads = 2
         self.hyper.conv_chan_list = [36, 64, 128, 256]        
-        self.hyper.pretraining_file = 'data/RML2016.10a/pretrain_models/2016.10a_AMC_Net.pt'
-    
+        self.hyper.pretraining_file = ''
 
-class awn(AWN_base):
+class awn(AWN_base):    
     def task_modify(self):
-        self.hyper.num_level = 1
+        self.hyper.num_level = 4
         self.hyper.regu_details = 0.01
         self.hyper.regu_approx = 0.01
         self.hyper.kernel_size = 3
         self.hyper.in_channels = 64
         self.hyper.latent_dim = 320    
-        self.hyper.pretraining_file = 'data/RML2016.10a/pretrain_models/2016.10a_AWN.pt'
+        self.hyper.pretraining_file = 'data/RML2018.01a/pretrain_models/2018.01a_AWN.pt'    
     
 if __name__ == "__main__":
     args = get_parser()

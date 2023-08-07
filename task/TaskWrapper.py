@@ -12,7 +12,7 @@ import torch
 import numpy as np
 import statistics
 
-from tqdm import trange
+from tqdm import tqdm
 import shutil
 from task.util import os_makedirs, os_rmdirs, set_logger, fix_seed
 from task.TaskVisual import save_training_process, save_confmat, save_snr_acc
@@ -130,12 +130,19 @@ class Task(Opt):
         logger.critical(
             'Loading the datasets {}'.format(self.data_name))
         self.data_opts.info.seed = self.seed
-        self.data_opts.load_rawdata(logger = logger)
+        
+        if 'batch_size' in self.model_opts.hyper.dict:
+            self.data_opts.batch_size = self.model_opts.hyper.batch_size
+            self.data_opts.info.batch_size = self.data_opts.batch_size
+            
+        # self.data_opts.load_rawdata(logger = logger)
         self.data_opts.pack_dataset(logger = logger)
         
         self.data_opts.num_snrs = list(np.unique(self.data_opts.snrs))
-        
-        logger.critical('-'*80)            
+        # logger.critical('-'*80)
+        Dataset_size = self.data_opts.train_set[0].shape[0] + self.data_opts.val_set[0].shape[0] + self.data_opts.test_set[0].shape[0]
+        logger.critical('-'*80) 
+        logger.critical(f'Dataset size: {int(Dataset_size)}\t Class num: {self.data_opts.num_classes}')
         logger.critical(f"Signal_train.shape: {list(self.data_opts.train_set[0].shape)}", )
         logger.critical(f"Signal_val.shape: {list(self.data_opts.val_set[0].shape)}")
         logger.critical(f"Signal_test.shape: {list(self.data_opts.test_set[0].shape)}")
@@ -213,7 +220,7 @@ class Task(Opt):
             
             # generate the output of the testset
 
-            pre_lab_all, label_all = self.eval_testset(model)
+            pre_lab_all, label_all = self.eval_testset(model, clogger)
             
             tgt_result_file = result_file if result_file is not None else self.model_result_file # add to allow the external configuration
             
@@ -231,7 +238,11 @@ class Task(Opt):
                 '{}\nGot an error on conduction.\n{}'.format('!'*50, '!'*50))
             raise SystemExit()
 
-    def eval_testset(self, model):
+    def eval_testset(self, model, logger):
+        if logger is not None:
+            logger.critical('>'*40)
+            logger.critical('Evaluation on the testing set.')
+            
         with torch.no_grad():
             
             if self.model_opts.arch == 'torch_nn':
@@ -242,7 +253,7 @@ class Task(Opt):
             pre_lab_all = []
             label_all = []
             
-            for (Sample, Label) in zip(test_sample_list, test_lable_list):
+            for (Sample, Label) in tqdm(zip(test_sample_list, test_lable_list), total=len(test_sample_list)):
                 pred_i = []
                 label_i = []
                 for (sample, label) in zip(Sample, Label):
@@ -286,9 +297,10 @@ class Task(Opt):
         Accuracy_list = np.zeros(len(self.data_opts.num_snrs), dtype=float)
         
         for snr_i, (pred_i, label_i) in enumerate(zip(pre_lab_all, label_all)):
-            Confmat_Set[snr_i, :, :] = confusion_matrix(label_i, pred_i)
+            cm_i =  confusion_matrix(label_i, pred_i)
+            Confmat_Set[snr_i, :, :] = cm_i
             Accuracy_list[snr_i] = accuracy_score(label_i, pred_i)
-            
+    
         pre_lab_all = np.concatenate(pre_lab_all)
         label_all = np.concatenate(label_all)
         
@@ -316,12 +328,12 @@ if __name__ == "__main__":
     args.cuda = True
     
     args.exp_config = 'exp_config/xinze'
-    args.exp_file= 'rml16a'
+    args.exp_file= 'rml18a'
     args.exp_name = 'paper.test'
     
     args.test = True
     args.clean = False
-    args.model = 'amcnet'
+    args.model = 'awn'
     
     
     task = Task(args)

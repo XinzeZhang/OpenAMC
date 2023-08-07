@@ -75,7 +75,7 @@ class nn_base(Opt):
 
 class AMC_Net_base(nn_base):
     def base_modify(self):
-        self.import_path = 'models/AMC_Net.py.py'
+        self.import_path = 'models/AMC_Net.py'
         self.class_name = 'AMC_Net'
 
     def hyper_init(self):        
@@ -90,4 +90,23 @@ class AMC_Net_base(nn_base):
         self.hyper.conv_chan_list = [36, 64, 128, 256]
         
         
+class AWN_base(nn_base):
+    def base_modify(self) -> None:
+        self.import_path = 'models/AWN.py'
+        self.class_name = 'AWN'
+
+    def hyper_init(self):        
+        self.hyper.epochs = 100
+        self.hyper.batch_size = 128
+        self.hyper.patience = 10
+        self.hyper.milestone_step = 3
+        self.hyper.gamma = 0.5
+        self.hyper.lr = 0.001
         
+        self.hyper.num_level = 1
+        self.hyper.regu_details = 0.01
+        self.hyper.regu_approx = 0.01
+        self.hyper.kernel_size = 3
+        self.hyper.in_channels = 64
+        self.hyper.latent_dim = 320
+           
