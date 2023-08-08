@@ -79,7 +79,7 @@ class awn(AWN_base):
 class mcl(mcldnn_base):
     def task_modify(self):
         self.hyper.epochs = 200
-        self.hyper.patience = 20
+        self.hyper.patience = 200
         self.hyper.gamma = 0.9
 
 
