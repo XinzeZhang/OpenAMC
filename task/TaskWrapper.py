@@ -17,6 +17,9 @@ import shutil
 from task.util import os_makedirs, os_rmdirs, set_logger, fix_seed
 from task.TaskVisual import save_training_process, save_confmat, save_snr_acc
 from sklearn.metrics import accuracy_score, confusion_matrix, f1_score, cohen_kappa_score
+from collections.abc import Mapping
+
+from TaskTuner import HyperTuner
 
 class Task(Opt):
     def __init__(self, args):
@@ -34,6 +37,7 @@ class Task(Opt):
         self.exp_config(args)
         self.data_statue = False
         self.fit_statue = False
+        self.tune = False
         
     def data_config(self, args):
         # data_opts = getattr(self.exp_module_path, args.dataset + '_data')
@@ -182,11 +186,11 @@ class Task(Opt):
             # cid_hyper.cid = i
             
             #toDo: set Tune, and loading the best parameters
-            # if self.tune:
-                # best_hyper = self.load_tuning()
-                # cid_hyper.update(best_hyper)
-                # clogger.info("Updating tuning result complete.")
-                # clogger.critical('-'*80)
+            if self.tune:
+                best_hyper = self.load_tuning()
+                cid_hyper.update(best_hyper)
+                clogger.info("Updating tuning result complete.")
+                clogger.critical('-'*80)
 
             
             model = self.model_import()
@@ -328,21 +332,92 @@ class Task(Opt):
         np.savez(tgt_acc_file, acc_overall = Accuracy_list, acc_mods= Accuracy_Mods)
         eLogger.info('Save accuracy file to the location: {}'.format(tgt_acc_file))
 
+    def tuning(self):
+        try:
+            self.tune = True
+            if 'innerTuning' in self.model_opts.dict:
+                if self.model_opts.innerTuning == True:
+                    self.tune = False
+            
+            if self.tune:
+                tuner_dir = os.path.join(self.model_fit_dir, 'tuner')
+                os_makedirs(tuner_dir)
+                
+                self.model_opts.tuner.dir = tuner_dir
+                tLogger = self.logger_config(tuner_dir, 'tuning')
+                
+                tuner_path = os.path.join(tuner_dir, 'hyperTuning.best.pt')
+                if not os.path.exists(tuner_path):
+                    pT_hyper = Opt()            
+                    if 'preTuning_model_path' in self.model_opts.tuner.dict:
+                        pT_path = self.model_opts.tuner.preTuning_model_path
+                        if os.path.exists(pT_path):
+                            pT_hyper.merge(torch.load(pT_path))
+                            self.model_opts.hyper.update(pT_hyper)
+                            
+                            tLogger.critical('-'*80)
+                            for (arg, value) in pT_hyper.dict.items():
+                                tLogger.info("PreTuning Results:\t %s - %r", arg, value)
+                        else:
+                            raise ValueError('Non-found preTuning results: {}.\nPlease check the preTuning_model: {}'.format(pT_path, self.model_opts.tuner.preTuning_model))
+                    # else:
+                    if len(list(self.model_opts.tuning.dict.keys())) > 0:
+                        
+                        if self.data_statue is False:
+                            self.load_data(logger=tLogger)
+                        
+                        series_tuner = HyperTuner(
+                            self.model_opts, tLogger, self.data_opts)
+                        best_hyper = series_tuner.conduct() # best_hyper is an Obj
+                    else:
+                        best_hyper = Opt()
+                        tLogger.critical('-'*80)
+                        tLogger.critical('Tuning complete.')
+                        
+                        pT_hyper.update(best_hyper, ignore_unk=True)
+                        torch.save(pT_hyper, tuner_path)                    
+                else:
+                    pT_hyper = torch.load(tuner_path)
+                    
+                    if isinstance(pT_hyper, Mapping):
+                        pT_hyper_info = pT_hyper
+                    elif isinstance(pT_hyper, object):
+                        pT_hyper_info = vars(pT_hyper)
+                    else:
+                        raise ValueError('Error data type in pT_hyper from: {}'.format(tuner_path))
+                                            
+                    for (arg, value) in pT_hyper_info.items():
+                        tLogger.info("Tuning Results:\t %s - %r", arg, value)
+                        
+            return self.tune               
+        except:
+            tLogger.exception(
+                '{}\nGot an error on tuning.\n{}'.format('!'*50, '!'*50))
+
+    def load_tuning(self):
+        tuner_dir = os.path.join(self.model_fit_dir, 'tuner')
+        tuner_path = os.path.join(tuner_dir, 'hyperTuning.best.pt')
+        best_hyper = torch.load(tuner_path)
+        if not os.path.exists(tuner_path):
+            raise ValueError(
+                'Invalid tuner path: {}'.format(tuner_path))
+        return best_hyper
 
 if __name__ == "__main__":
     args = get_parser()
     args.cuda = True
     
     args.exp_config = 'exp_config/xinze'
-    args.exp_file= 'rml18a'
-    args.exp_name = 'paper.test'
+    args.exp_file= 'rml16a'
+    # args.exp_name = 'icassp23'
+    args.exp_name = 'demo.tuning'
+    args.gid = 0
     
     args.test = True
     args.clean = False
-    args.model = 'awn'
+    args.model = 'awn2'
     
     
     task = Task(args)
     task.conduct()
-    task.evaluate(force_update=False)
-            
+    task.evaluate(force_update=True)

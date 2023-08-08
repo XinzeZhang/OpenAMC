@@ -58,6 +58,7 @@ class BaseNet(nn.Module):
         
         if pretraining_tag is False:
             fit_info = self._xfit(train_loader, val_loader)
+            
         
         return fit_info
 

@@ -9,6 +9,8 @@ import pickle
 import numpy as np
 import torch
 
+from ray import tune
+
 from models._Setting import AMC_Net_base, AWN_base, mcldnn_base, vtcnn2_base
 
 class Data(TaskDataset):
@@ -74,7 +76,7 @@ class awn(AWN_base):
         self.hyper.kernel_size = 3
         self.hyper.in_channels = 64
         self.hyper.latent_dim = 320    
-        # self.hyper.pretraining_file = 'data/RML2016.10a/pretrain_models/2016.10a_AWN.pt'
+        self.hyper.pretraining_file = 'exp_tempTest/RML2016.10a/icassp23/fit/awn/checkpoint/RML2016.10a_awn.best.pt'
     
 class mcl(mcldnn_base):
     def task_modify(self):
@@ -87,7 +89,16 @@ class vtcnn(vtcnn2_base):
         self.hyper.epochs = 100
         self.hyper.patience = 10
         self.hyper.gamma = 0.5
-        
+
+class awn2(awn):
+    def ablation_modify(self):
+        self.hyper.epochs = 100
+        self.hyper.pretraining_file = ''
+        self.tuning.lr = tune.loguniform(1e-4, 1e-2)
+        self.tuning.gamma = tune.uniform(0.33,0.99)
+        self.tuning.milestone_step = tune.qrandint(1,20,2)
+        self.tuner.algo = 'tpe'
+
 if __name__ == "__main__":
     args = get_parser()
     args.cuda = True
@@ -95,16 +106,17 @@ if __name__ == "__main__":
     args.exp_config = os.path.dirname(sys.argv[0]).replace(os.getcwd()+'/', '')
     args.exp_file = os.path.splitext(os.path.basename(sys.argv[0]))[0]
     # args.exp_name = 'icassp23'
-    args.exp_name = 'paper.test'
+    args.exp_name = 'tuning.test'
     args.gid = 0
     
     args.test = True
     args.clean = False
-    # args.model = 'vtcnn'
+    args.model = 'awn2'
     
     
     task = Task(args)
+    task.tuning()
     task.conduct()
-    task.evaluate(force_update=False)
+    task.evaluate(force_update=True)
             
     

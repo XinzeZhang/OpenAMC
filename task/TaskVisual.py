@@ -32,6 +32,7 @@ def save_training_process(epochs_stats, plot_dir):
     plt.xlabel("epoch")
     plt.ylabel("Loss")
     plt.subplot(1, 2, 2)
+    
     plt.plot(epochs_stats.epoch, epochs_stats.train_acc,
              "ro-", label="Train acc")
     plt.plot(epochs_stats.epoch, epochs_stats.val_acc,

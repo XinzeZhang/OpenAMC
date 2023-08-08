@@ -7,6 +7,7 @@ class nn_base(Opt):
         super().__init__()
         
         self.arch = 'torch_nn'
+        
         self.hyper = Opt()
         self.tuner = Opt()
         self.tuning = Opt()
@@ -18,8 +19,8 @@ class nn_base(Opt):
         self.hyper_modify()
 
         self.tuning_modify()
-        self.ablation_modify()
         self.task_modify()
+        self.ablation_modify()
         
         self.common_process()
 
@@ -32,9 +33,11 @@ class nn_base(Opt):
 
     def tuner_init(self,):
         # total cpu cores for tuning
+        self.trainer_path = 'models/_comTrainer.py'
+        self.trainer_name = 'Trainer'
         self.tuner.resource = {
-            "cpu": 5,
-            "gpu": 0.5  # set this for GPUs
+            "cpu": 10,
+            "gpu": 1  # set this for GPUs
         }
         # gpu cards per trial in tune
         # tuner search times
@@ -63,6 +66,9 @@ class nn_base(Opt):
         if "import_path" in self.dict:
             self.import_path = self.import_path.replace(
             '.py', '').replace('/', '.')
+        if "trainer_path" in self.dict:
+            self.trainer_path = self.trainer_path.replace(
+                    '.py', '').replace('/', '.')            
 
 
 
@@ -93,6 +99,9 @@ class AWN_base(nn_base):
     def base_modify(self) -> None:
         self.import_path = 'models/AWN.py'
         self.class_name = 'AWN'
+        self.trainer_path = 'models/AWN.py'
+        self.trainer_name = 'AWN_Trainer'
+        
     def hyper_modify(self):        
         self.hyper.batch_size = 128
         self.hyper.gamma = 0.5
@@ -103,6 +112,8 @@ class AWN_base(nn_base):
         self.hyper.kernel_size = 3
         self.hyper.in_channels = 64
         self.hyper.latent_dim = 320
+
+    
 
 class mcldnn_base(nn_base):
     def base_modify(self) -> None:

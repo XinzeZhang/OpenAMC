@@ -49,7 +49,7 @@ class EarlyStopping:
         self.delta = delta
         self.logger = logger
 
-    def __call__(self, val_loss, model):
+    def __call__(self, val_loss):
 
         score = -val_loss
 
@@ -257,7 +257,7 @@ class Trainer:
             torch.save(self.model.state_dict(), os.path.join(
                 self.checkpoint_folder, best_model_name))
 
-        self.early_stopping(self.val_loss.avg, self.model)
+        self.early_stopping(self.val_loss.avg)
 
         if self.early_stopping.counter != 0 and self.early_stopping.counter % self.cfg.milestone_step == 0:
             self.adjust_learning_rate(self.optimizer, self.cfg.gamma)

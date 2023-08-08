@@ -89,6 +89,8 @@ class AWN(BaseNet):
 
         return logit, regu_sum
     
+    # def _xfit_once(self, )
+    
     def _xfit(self, train_loader, val_loader):
         net_trainer = AWN_Trainer(self, train_loader, val_loader, self.hyper, self.logger)
         net_trainer.loop()
