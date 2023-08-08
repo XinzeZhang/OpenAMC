@@ -93,7 +93,7 @@ if __name__ == "__main__":
     
     args.test = True
     args.clean = False
-    args.model = 'mclx'
+    args.model = 'mcl'
     
     
     task = Task(args)

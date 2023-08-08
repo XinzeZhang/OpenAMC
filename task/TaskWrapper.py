@@ -49,9 +49,9 @@ class Task(Opt):
                                  args.model)
         else:
             try:
-                share_module_path = importlib.import_module('data.base')
+                share_module_path = importlib.import_module('models._Setting')
                 model_opts = getattr(
-                    share_module_path, self.model_name + '_default')
+                    share_module_path, self.model_name + '_base')
             except:
                 raise ValueError(
                     'Non-supported model "{}" in the "{}" module, please check the module or the model name'.format(self.model_name, self.exp_module_path))
