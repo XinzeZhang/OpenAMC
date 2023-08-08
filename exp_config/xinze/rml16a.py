@@ -9,7 +9,7 @@ import pickle
 import numpy as np
 import torch
 
-from models._Setting import AMC_Net_base, AWN_base, mcldnn_base
+from models._Setting import AMC_Net_base, AWN_base, mcldnn_base, vtcnn2_base
 
 class Data(TaskDataset):
     def __init__(self, opts):
@@ -74,31 +74,37 @@ class awn(AWN_base):
         self.hyper.kernel_size = 3
         self.hyper.in_channels = 64
         self.hyper.latent_dim = 320    
-        self.hyper.pretraining_file = 'data/RML2016.10a/pretrain_models/2016.10a_AWN.pt'
+        # self.hyper.pretraining_file = 'data/RML2016.10a/pretrain_models/2016.10a_AWN.pt'
     
 class mcl(mcldnn_base):
     def task_modify(self):
         self.hyper.epochs = 200
         self.hyper.patience = 200
-        self.hyper.gamma = 0.9
+        self.hyper.gamma = 0.5
 
-
+class vtcnn(vtcnn2_base):
+    def task_modify(self):
+        self.hyper.epochs = 100
+        self.hyper.patience = 10
+        self.hyper.gamma = 0.5
+        
 if __name__ == "__main__":
     args = get_parser()
     args.cuda = True
     
     args.exp_config = os.path.dirname(sys.argv[0]).replace(os.getcwd()+'/', '')
     args.exp_file = os.path.splitext(os.path.basename(sys.argv[0]))[0]
-    args.exp_name = 'icassp23'
-    args.gid = 1
+    # args.exp_name = 'icassp23'
+    args.exp_name = 'paper.test'
+    args.gid = 0
     
     args.test = True
     args.clean = False
-    args.model = 'amcnet'
+    # args.model = 'vtcnn'
     
     
     task = Task(args)
     task.conduct()
-    task.evaluate(force_update=True)
+    task.evaluate(force_update=False)
             
     

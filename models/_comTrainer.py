@@ -144,6 +144,7 @@ class Trainer:
 
         self.lr_list = []
         self.best_monitor = 0.0
+        self.best_epoch = 0
         self.train_loss_list = []
         self.train_acc_list = []
         self.val_loss_list = []
@@ -155,6 +156,16 @@ class Trainer:
         self.train_loss = AverageMeter()
         self.train_acc = AverageMeter()
         self.logger.info(f"Starting training epoch {self.iter}:")
+        
+    def cal_loss_acc(self, sig_batch, lab_batch):
+        logit = self.model(sig_batch)
+        loss = self.criterion(logit, lab_batch)
+
+        pre_lab = torch.argmax(logit, 1)
+        acc = torch.sum(pre_lab == lab_batch.data).double(
+        ).item() / lab_batch.size(0)
+        
+        return loss, acc
 
     def run_train_step(self):
         with tqdm(total=len(self.train_loader),
@@ -165,16 +176,17 @@ class Trainer:
                 sig_batch = sig_batch.to(self.cfg.device)
                 lab_batch = lab_batch.to(self.cfg.device)
 
-                logit = self.model(sig_batch)
+                # logit = self.model(sig_batch)
+                # loss = self.criterion(logit, lab_batch)
 
-                loss = self.criterion(logit, lab_batch)
+                loss, acc = self.cal_loss_acc(sig_batch, lab_batch)
                 self.optimizer.zero_grad()
                 loss.backward()
                 self.optimizer.step()
 
-                pre_lab = torch.argmax(logit, 1)
-                acc = torch.sum(pre_lab == lab_batch.data).double(
-                ).item() / lab_batch.size(0)
+                # pre_lab = torch.argmax(logit, 1)
+                # acc = torch.sum(pre_lab == lab_batch.data).double(
+                # ).item() / lab_batch.size(0)
 
                 self.train_loss.update(loss.item())
                 self.train_acc.update(acc)
@@ -188,8 +200,8 @@ class Trainer:
 
     def after_train_step(self):
         self.lr_list.append(self.optimizer.param_groups[0]['lr'])
-        self.logger.info('====> Epoch: {} Time: {:.2f} Train Loss: {:.6E} Train Acc: {:.6E} lr: {:.5f}'.format(
-            self.iter, time.time() - self.t_s, self.train_loss.avg, self.train_acc.avg, self.lr_list[-1]))
+        self.logger.info('====> Epoch: {} Time: {:.2f} Train Loss: {:.6E} Train Acc: {:.3f}% lr: {:.5f}'.format(
+            self.iter, time.time() - self.t_s, self.train_loss.avg, self.train_acc.avg * 100, self.lr_list[-1]))
         self.train_loss_list.append(self.train_loss.avg)
         self.train_acc_list.append(self.train_acc.avg)
         
@@ -213,12 +225,13 @@ class Trainer:
                     sig_batch = sig_batch.to(self.cfg.device)
                     lab_batch = lab_batch.to(self.cfg.device)
 
-                    logit = self.model(sig_batch)
-                    loss = self.criterion(logit, lab_batch)
+                    loss, acc = self.cal_loss_acc(sig_batch, lab_batch)
+                    # logit = self.model(sig_batch)
+                    # loss = self.criterion(logit, lab_batch)
 
-                    pre_lab = torch.argmax(logit, 1)
-                    acc = torch.sum(pre_lab == lab_batch.data).double(
-                    ).item() / lab_batch.size(0)
+                    # pre_lab = torch.argmax(logit, 1)
+                    # acc = torch.sum(pre_lab == lab_batch.data).double(
+                    # ).item() / lab_batch.size(0)
 
                     self.val_loss.update(loss.item())
                     self.val_acc.update(acc)
@@ -232,10 +245,12 @@ class Trainer:
 
     def after_val_step(self):
         self.logger.info(
-            '====> Epoch: {} Time: {:.2f} Val Loss: {:.6E} Val Acc: {:6E}'.format(self.iter, time.time() - self.t_s, self.val_loss.avg, self.val_acc.avg))
+            '====> Epoch: {} Time: {:.2f} Val Loss: {:.6E} Val Acc: {:.3f}%'.format(self.iter, time.time() - self.t_s, self.val_loss.avg, self.val_acc.avg * 100))
+        self.logger.info('Best Epoch: {} \t Best Val Acc: {:.3f}%'.format(self.best_epoch, self.best_monitor * 100 ))
 
         if self.val_acc.avg >= self.best_monitor:
             self.best_monitor = self.val_acc.avg
+            self.best_epoch = self.iter
             # toDo: change to annother location.
             best_model_name = self.cfg.data_name + '_' + \
                 f'{self.cfg.model_name}' + '.best.pt'

@@ -54,6 +54,7 @@ class MCLDNN(BaseNet):
             nn.Conv2d(in_channels= 100, out_channels= 100, kernel_size=(2,5), padding='valid'),
             nn.ReLU(),
         )
+
         # afer conv4(batch, 80, 1, 6)
         # reshape(batch, 80, 6)
         self.lstm1 = nn.Sequential(
@@ -88,8 +89,8 @@ class MCLDNN(BaseNet):
         x_iq2 = torch.stack([x_i,x_q],dim=-2)
         
         x_iq2 = self.conv4(x_iq2)
-        x_all = torch.cat([x_iq,x_iq2], dim=1)
-        x_all = self.conv5(x_all)
+        _x_all = torch.cat([x_iq,x_iq2], dim=1)
+        x_all = self.conv5(_x_all)
         x_all = torch.transpose(x_all[:,:,0,:],1,2)
 
         x_all, (h,c) = self.lstm1(x_all)
@@ -104,12 +105,12 @@ class MCLDNN(BaseNet):
     def initialize_weight(self):
         for m in self.modules():
             if isinstance(m, nn.Conv2d) or isinstance(m, nn.Conv1d):
-                nn.init.xavier_normal_(m.weight)
+                nn.init.xavier_uniform_(m.weight)
             elif isinstance(m, nn.BatchNorm2d) or isinstance(m, nn.BatchNorm1d):
                 nn.init.constant_(m.weight, 1)
                 nn.init.constant_(m.bias, 0)
             elif isinstance(m, nn.Linear):
-                nn.init.xavier_normal_(m.weight)
+                nn.init.xavier_uniform_(m.weight)
                 # nn.init.constant_(m.bias, 0)
 
 

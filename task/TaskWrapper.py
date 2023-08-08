@@ -33,6 +33,7 @@ class Task(Opt):
         self.model_config(args)
         self.exp_config(args)
         self.data_statue = False
+        self.fit_statue = False
         
     def data_config(self, args):
         # data_opts = getattr(self.exp_module_path, args.dataset + '_data')
@@ -147,18 +148,21 @@ class Task(Opt):
         logger.critical(f"Signal_val.shape: {list(self.data_opts.val_set[0].shape)}")
         logger.critical(f"Signal_test.shape: {list(self.data_opts.test_set[0].shape)}")
         self.data_statue = True
+        
     
     def conduct(self, force_update = False):
-        # os_makedirs(self.model_fit_dir)
-        os_makedirs(self.model_pred_dir)
-        
-        task_logger= self.logger_config(
-                self.model_fit_dir, 'train')
-        self.load_data(logger=task_logger)
-        
+        # os_makedirs(self.model_fit_dir)        
         # for i in tqdm(self.cid_list):
         if not os.path.exists(self.model_result_file) or force_update:     
+            os_makedirs(self.model_pred_dir)
+        
+            task_logger= self.logger_config(
+                    self.model_fit_dir, 'train')
+            self.load_data(logger=task_logger)
+            
             self.conduct_fit(clogger= task_logger,result_file = self.model_result_file)
+            
+            self.fit_statue = True
 
     def conduct_fit(self, clogger = None, result_file = None, innerSaving = True):
         try:
@@ -285,6 +289,8 @@ class Task(Opt):
         
         # for i in self.cid_list: # multiple cross validation in the future version
         
+        if self.fit_statue:
+            force_update = False
         
         if os.path.exists(self.model_result_file) and force_update is False:
             with np.load(self.model_result_file) as data:
@@ -338,5 +344,5 @@ if __name__ == "__main__":
     
     task = Task(args)
     task.conduct()
-    task.evaluate(force_update=True)
+    task.evaluate(force_update=False)
             

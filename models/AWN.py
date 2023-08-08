@@ -6,7 +6,8 @@ import torch
 import torch.nn as nn
 
 from models._baseNet import BaseNet
-
+from models._comTrainer import Trainer
+from tqdm import tqdm
 
 class AWN(BaseNet):
     def __init__(self, hyper = None, logger = None):
@@ -87,7 +88,33 @@ class AWN(BaseNet):
         logit = self.fc(x)
 
         return logit, regu_sum
+    
+    def _xfit(self, train_loader, val_loader):
+        net_trainer = AWN_Trainer(self, train_loader, val_loader, self.hyper, self.logger)
+        net_trainer.loop()
+        fit_info = net_trainer.epochs_stats
+        return fit_info
+    
+    def predict(self, sample):     
+        sample = sample.to(self.hyper.device)
+        logit, _ = self.forward(sample)
+        pre_lab = torch.argmax(logit, 1).cpu()
+        return pre_lab
+    
+class AWN_Trainer(Trainer):
+    def __init__(self, model,train_loader,val_loader, cfg, logger):
+        super().__init__(model,train_loader,val_loader,                 cfg,logger)
 
+    def cal_loss_acc(self, sig_batch, lab_batch):
+        logit, regu_sum = self.model(sig_batch)
+        loss = self.criterion(logit, lab_batch)
+        loss += sum(regu_sum)
+        
+        pre_lab = torch.argmax(logit, 1)
+        acc = torch.sum(pre_lab == lab_batch.data).double(
+        ).item() / lab_batch.size(0)
+        
+        return loss, acc
 
 class Splitting(nn.Module):
     def __init__(self):

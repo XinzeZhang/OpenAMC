@@ -57,10 +57,14 @@ class BaseNet(nn.Module):
                 raise SystemExit()
         
         if pretraining_tag is False:
-            net_trainer = Trainer(self, train_loader, val_loader, self.hyper, self.logger)
-            net_trainer.loop()
-            fit_info = net_trainer.epochs_stats
+            fit_info = self._xfit(train_loader, val_loader)
         
+        return fit_info
+
+    def _xfit(self, train_loader, val_loader):
+        net_trainer = Trainer(self, train_loader, val_loader, self.hyper, self.logger)
+        net_trainer.loop()
+        fit_info = net_trainer.epochs_stats
         return fit_info
 
     def predict(self, sample):
