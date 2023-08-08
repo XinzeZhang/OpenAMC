@@ -243,7 +243,7 @@ class Trainer:
         return self.val_loss.avg, self.val_acc.avg
                         
 
-    def after_val_step(self):
+    def after_val_step(self, checkpoint = True):
         self.logger.info(
             '====> Epoch: {} Time: {:.2f} Val Loss: {:.6E} Val Acc: {:.3f}%'.format(self.iter, time.time() - self.t_s, self.val_loss.avg, self.val_acc.avg * 100))
         self.logger.info('Best Epoch: {} \t Best Val Acc: {:.3f}%'.format(self.best_epoch, self.best_monitor * 100 ))
@@ -252,10 +252,11 @@ class Trainer:
             self.best_monitor = self.val_acc.avg
             self.best_epoch = self.iter
             # toDo: change to annother location.
-            best_model_name = self.cfg.data_name + '_' + \
-                f'{self.cfg.model_name}' + '.best.pt'
-            torch.save(self.model.state_dict(), os.path.join(
-                self.checkpoint_folder, best_model_name))
+            if checkpoint:
+                best_model_name = self.cfg.data_name + '_' + \
+                    f'{self.cfg.model_name}' + '.best.pt'
+                torch.save(self.model.state_dict(), os.path.join(
+                    self.checkpoint_folder, best_model_name))
 
         self.early_stopping(self.val_loss.avg)
 

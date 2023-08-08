@@ -25,12 +25,14 @@ from ray.tune.search.ax import AxSearch
 from ray.tune.search.optuna import OptunaSearch
 from ray.tune.search import ConcurrencyLimiter
 from ray.tune.search.basic_variant import BasicVariantGenerator
+from ray.tune import ExperimentAnalysis
 
 import nevergrad as ng
 
 import importlib
 from models._comTrainer import Trainer
 
+import pickle
 
 class HyperTuner(Opt):
     def __init__(self, opts = None, logger= None, subPack = None):
@@ -69,6 +71,7 @@ class HyperTuner(Opt):
             
         self.loss_lower_bound = 0
         self.algo_init()
+    
                   
     def algo_init(self,):
         if 'algo' not in self.tuner.dict:
@@ -132,12 +135,28 @@ class HyperTuner(Opt):
         return self.best_config
 
     def conduct(self,):
+        self.best_checkpoint_path = None
+        
         if self.tuner.num_samples == 1 and self.algo_name == 'rand':
             self.best_config = self.once_sample()
         else:
-            self.best_config = self._conduct()
+            
+            results_pkl = os.path.join(self.tuner.dir, self.algo_name, 'tuner.pkl' )
+            if os.path.exists(results_pkl):
+                try:
+                    analysis = ExperimentAnalysis(os.path.join(self.tuner.dir, self.algo_name))
+                    best_config = analysis.get_best_config(metric='val_acc', mode='max')
+                    best_checkpoint = analysis.get_best_checkpoint(analysis.get_best_logdir(metric='val_acc', mode='max'), metric='val_acc', mode='max')
+                    self.best_checkpoint_path = os.path.join(best_checkpoint.path, 'model.pth')
+                    
+                    self.best_config  = best_config
+                except:
+                    self._conduct()
+            else:
+                self._conduct()
+            # self.best_config = self._conduct()
         
-        return self.best_config    
+        return self.best_config, self.best_checkpoint_path 
 
     def _conduct(self,):
         
@@ -190,9 +209,9 @@ class HyperTuner(Opt):
         best_result = results.get_best_result(self.metric, 'min')
         self.best_config.merge(best_result.config)
         self.best_result = best_result.metrics
+        self.best_checkpoint_path = os.path.join(best_result.checkpoint.path, 'model.pth')
         # self.logger.info("Best config is:", self.best_config.dict)
-        
-        return self.best_config    
+      
     
 
 class TuningCell(tune.Trainable):
@@ -230,7 +249,7 @@ class TuningCell(tune.Trainable):
         self.trainer.after_train_step()
         self.trainer.before_val_step()
         _, v_acc = self.trainer.run_val_step()
-        self.trainer.after_val_step()
+        self.trainer.after_val_step(checkpoint = False)
         self.trainer.iter += 1      
         
         return {
@@ -240,9 +259,9 @@ class TuningCell(tune.Trainable):
     
     def save_checkpoint(self, tmp_checkpoint_dir):
         checkpoint_path = os.path.join(tmp_checkpoint_dir, "model.pth")
-        torch.save(self.sample_model.state_dict(), checkpoint_path)
+        torch.save(self.trainer.model.state_dict(), checkpoint_path)
         return tmp_checkpoint_dir
 
     def load_checkpoint(self, tmp_checkpoint_dir):
         checkpoint_path = os.path.join(tmp_checkpoint_dir, "model.pth")
-        self.sample_model.load_state_dict(torch.load(checkpoint_path))        
+        self.trainer.model.load_state_dict(torch.load(checkpoint_path))        
