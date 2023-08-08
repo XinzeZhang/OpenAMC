@@ -5,18 +5,12 @@ sys.path.append(os.path.join(os.path.dirname(__file__), os.path.pardir))
 import torch
 import torch.nn as nn
 
-from models._comTrainer import Trainer
+from models._baseNet import BaseNet
 
 
-class AWN(nn.Module):
+class AWN(BaseNet):
     def __init__(self, hyper = None, logger = None):
-        super(AWN, self).__init__()
-        
-        self.hyper = hyper
-        self.logger = logger
-
-        for (arg, value) in hyper.dict.items():
-            self.logger.info("Argument %s: %r", arg, value)
+        super().__init__(hyper, logger)  
 
         self.num_classes = hyper.num_classes
         self.num_levels = hyper.num_level
@@ -93,41 +87,6 @@ class AWN(nn.Module):
         logit = self.fc(x)
 
         return logit, regu_sum
-
-
-    def xfit(self, train_loader, val_loader):
-        """
-        docstring
-        """
-        pretraining_tag = False
-        fit_info = None
-        if 'pretraining_file' in self.hyper.dict and self.hyper.pretraining_file is not None and os.path.exists(self.hyper.pretraining_file):
-            try:
-                self.logger.info(f'Finding pretraining file in the location {self.hyper.pretraining_file}')
-                
-                model_state = torch.load(self.hyper.pretraining_file)
-                self.load_state_dict(model_state)
-                
-                self.logger.info('Successfully loading the pretraining file!')
-                pretraining_tag = True
-            except:
-                self.logger.exception(
-                    '{}\nGot an error on loading pretraining_file in the location: {}.\n{}'.format('!'*50, self.hyper.pretraining_file, '!'*50))
-                raise SystemExit()
-        
-        if pretraining_tag is False:
-            net_trainer = Trainer(self, train_loader, val_loader, self.hyper, self.logger)
-            net_trainer.loop()
-            fit_info = net_trainer.epochs_stats
-        
-        return fit_info
-
-    def predict(self, sample):
-        sample = sample.to(self.hyper.device)
-        logit, _ = self.forward(sample)
-        pre_lab = torch.argmax(logit, 1).cpu()
-        return pre_lab
-
 
 
 class Splitting(nn.Module):

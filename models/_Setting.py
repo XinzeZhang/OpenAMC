@@ -24,7 +24,11 @@ class nn_base(Opt):
         self.common_process()
 
     def hyper_init(self,):
-        pass
+        self.hyper.epochs = 100
+        self.hyper.patience = 10
+        self.hyper.milestone_step = 3
+        self.hyper.gamma = 0.5
+        self.hyper.lr = 0.001
 
     def tuner_init(self,):
         # total cpu cores for tuning
@@ -77,31 +81,21 @@ class AMC_Net_base(nn_base):
     def base_modify(self):
         self.import_path = 'models/AMC_Net.py'
         self.class_name = 'AMC_Net'
-
-    def hyper_init(self):        
-        self.hyper.epochs = 100
-        self.hyper.patience = 10
-        self.hyper.milestone_step = 3
+    def hyper_modify(self):        
         self.hyper.gamma = 0.1
-        self.hyper.lr = 0.001
+
         self.hyper.extend_channel = 36
         self.hyper.latent_dim = 512
         self.hyper.num_heads = 2
         self.hyper.conv_chan_list = [36, 64, 128, 256]
         
-        
 class AWN_base(nn_base):
     def base_modify(self) -> None:
         self.import_path = 'models/AWN.py'
         self.class_name = 'AWN'
-
-    def hyper_init(self):        
-        self.hyper.epochs = 100
+    def hyper_modify(self):        
         self.hyper.batch_size = 128
-        self.hyper.patience = 10
-        self.hyper.milestone_step = 3
         self.hyper.gamma = 0.5
-        self.hyper.lr = 0.001
         
         self.hyper.num_level = 1
         self.hyper.regu_details = 0.01
@@ -109,4 +103,8 @@ class AWN_base(nn_base):
         self.hyper.kernel_size = 3
         self.hyper.in_channels = 64
         self.hyper.latent_dim = 320
-           
+
+class mcldnn_base(nn_base):
+    def base_modify(self) -> None:
+        self.import_path = 'models/mcldnn.py'
+        self.class_name = 'MCLDNN'

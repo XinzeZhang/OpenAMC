@@ -9,7 +9,7 @@ import pickle
 import numpy as np
 import torch
 
-from models._Setting import AMC_Net_base, AWN_base
+from models._Setting import AMC_Net_base, AWN_base, mcldnn_base
 
 class Data(TaskDataset):
     def __init__(self, opts):
@@ -76,6 +76,13 @@ class awn(AWN_base):
         self.hyper.latent_dim = 320    
         self.hyper.pretraining_file = 'data/RML2016.10a/pretrain_models/2016.10a_AWN.pt'
     
+class mcl(mcldnn_base):
+    def task_modify(self):
+        self.hyper.epochs = 200
+        self.hyper.patience = 20
+        self.hyper.gamma = 0.9
+
+
 if __name__ == "__main__":
     args = get_parser()
     args.cuda = True
@@ -86,7 +93,7 @@ if __name__ == "__main__":
     
     args.test = True
     args.clean = False
-    args.model = 'awn'
+    args.model = 'mclx'
     
     
     task = Task(args)

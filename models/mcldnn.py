@@ -3,11 +3,14 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 # from model.base_model import BaseModel
-from models._comTrainer import Trainer
+from models._baseNet import BaseNet
+import os
+
 
 class CausalConv1d(nn.Module):
     '''Refer to https://discuss.pytorch.org/t/causal-convolution/3456/11'''
     def __init__(self, in_channels, out_channels, kernel_size, dilation=1, **kwargs):
+        super(CausalConv1d, self).__init__()
         self.padding = (kernel_size - 1) * dilation
         self.conv = nn.Conv1d(in_channels, out_channels, kernel_size, padding=self.padding, dilation=dilation, **kwargs)
     
@@ -15,55 +18,41 @@ class CausalConv1d(nn.Module):
         x = self.conv(x)
         return x[:,:,:-self.padding]
 
-class MCLDNN(nn.Module):
+class MCLDNN(BaseNet):
     '''Refer to https://github.com/wzjialang/MCLDNN/blob/master/MCLDNN.py
     '''
     def __init__(self, hyper = None, logger = None):
-        super(MCLDNN, self).__init__()
-        self.hyper = hyper
-        self.logger = logger
-
-        for (arg, value) in hyper.dict.items():
-            self.logger.info("Argument %s: %r", arg, value)
+        super().__init__(hyper, logger)  
                     
         output_dim = hyper.num_classes
 
         # input(batch, 1, 2, 128)
         self.conv1 = nn.Sequential(
-            # nn.BatchNorm2d(1),
-            # nn.ZeroPad2d(padding = (3,4,0,1)),
+            nn.BatchNorm2d(1),
             nn.Conv2d(in_channels = 1, out_channels = 50, kernel_size = (2, 8), padding='same'),
             nn.ReLU(),
-            # nn.Dropout(0.6)
         )
         self.conv2 = nn.Sequential(
-            # nn.BatchNorm1d(1),
-            nn.ZeroPad2d(padding = (7, 0,0,0)),
-            nn.Conv1d(in_channels = 1, out_channels = 50, kernel_size=(8)),
+            nn.BatchNorm1d(1),
+            CausalConv1d(in_channels = 1, out_channels = 50, kernel_size=8),
             nn.ReLU(),
-            # nn.Dropout(0.6)
         )        
         self.conv3 = nn.Sequential(
-            # nn.BatchNorm1d(1),
-            nn.ZeroPad2d(padding = (7, 0,0,0)),
-            nn.Conv1d(in_channels = 1, out_channels = 50, kernel_size=(8)),
+            nn.BatchNorm1d(1),
+            CausalConv1d(in_channels = 1, out_channels = 50, kernel_size=8),
             nn.ReLU(),
-            # nn.Dropout(0.6)
         )
         # # afer conv3(batch, 80, 1, 14)
         self.conv4 = nn.Sequential(
-            # nn.BatchNorm2d(50),
-            # nn.ZeroPad2d(padding = (3, 4,0,0)),
+            nn.BatchNorm2d(50),
             nn.Conv2d(in_channels= 50, out_channels= 50, kernel_size=(1,8), padding='same'),
             nn.ReLU(),
-            # nn.Dropout(0.6),
         )
 
         self.conv5 = nn.Sequential(
-            # nn.BatchNorm2d(100),
+            nn.BatchNorm2d(100),
             nn.Conv2d(in_channels= 100, out_channels= 100, kernel_size=(2,5), padding='valid'),
             nn.ReLU(),
-            # nn.Dropout(0.6),
         )
         # afer conv4(batch, 80, 1, 6)
         # reshape(batch, 80, 6)
@@ -91,7 +80,7 @@ class MCLDNN(nn.Module):
         self.to(self.hyper.device)
         
 
-    def forward(self, x, y=None, is_train=False):
+    def forward(self, x):
         x = x.view(x.shape[0],1, 2, 128)
         x_iq = self.conv1(x)
         x_i = self.conv2(x[:,:,0,:])
@@ -109,22 +98,19 @@ class MCLDNN(nn.Module):
         x_all = self.fc1(x_all)
         x_all = self.fc2(x_all)
         out = self.fc3(x_all)
-        if is_train:
-            loss = F.cross_entropy(out,y)
-            return loss, out
 
         return out 
     
     def initialize_weight(self):
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
-                nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+                nn.init.xavier_normal_(m.weight, mode='fan_out', nonlinearity='relu')
             elif isinstance(m, nn.BatchNorm2d) or isinstance(m, nn.BatchNorm1d):
                 nn.init.constant_(m.weight, 1)
                 nn.init.constant_(m.bias, 0)
             elif isinstance(m, nn.Linear):
                 nn.init.xavier_normal_(m.weight)
-                nn.init.constant_(m.bias, 0)
+                # nn.init.constant_(m.bias, 0)
 
 
 if __name__ == '__main__':

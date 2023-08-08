@@ -188,7 +188,7 @@ class Trainer:
 
     def after_train_step(self):
         self.lr_list.append(self.optimizer.param_groups[0]['lr'])
-        self.logger.info('====> Epoch: {} Time: {:.2f} Train Loss: {} Train acc: {} lr: {:.5f}'.format(
+        self.logger.info('====> Epoch: {} Time: {:.2f} Train Loss: {:.6E} Train Acc: {:.6E} lr: {:.5f}'.format(
             self.iter, time.time() - self.t_s, self.train_loss.avg, self.train_acc.avg, self.lr_list[-1]))
         self.train_loss_list.append(self.train_loss.avg)
         self.train_acc_list.append(self.train_acc.avg)
@@ -232,7 +232,7 @@ class Trainer:
 
     def after_val_step(self):
         self.logger.info(
-            '====> Epoch: {} Time: {:.2f} Val Loss: {:.6E} Val acc: {:6E}'.format(self.iter, time.time() - self.t_s, self.val_loss.avg, self.val_acc.avg))
+            '====> Epoch: {} Time: {:.2f} Val Loss: {:.6E} Val Acc: {:6E}'.format(self.iter, time.time() - self.t_s, self.val_loss.avg, self.val_acc.avg))
 
         if self.val_acc.avg >= self.best_monitor:
             self.best_monitor = self.val_acc.avg
