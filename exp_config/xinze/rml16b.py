@@ -62,7 +62,7 @@ class amcnet(AMC_Net_base):
         self.hyper.latent_dim = 512
         self.hyper.num_heads = 2
         self.hyper.conv_chan_list = [36, 64, 128, 256]        
-        self.hyper.pretraining_file = 'data/RML2016.10b/pretrain_models/2016.10b_AMC_Net.pt'
+        self.hyper.pretraining_file = 'data/RML2016.10b/pretrain_models/2016.10b_AMC_Net.best.pt'
     
 class awn(AWN_base):
     def task_modify(self):
@@ -81,11 +81,11 @@ if __name__ == "__main__":
     
     args.exp_config = os.path.dirname(sys.argv[0]).replace(os.getcwd()+'/', '')
     args.exp_file = os.path.splitext(os.path.basename(sys.argv[0]))[0]
-    args.exp_name = 'paper.test'
+    args.exp_name = 'icassp23'
     
     args.test = True
     args.clean = False
-    args.model = 'awn'
+    args.model = 'amcnet'
     
     
     task = Task(args)

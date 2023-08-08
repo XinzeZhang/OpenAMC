@@ -42,9 +42,13 @@ class BaseNet(nn.Module):
             try:
                 self.logger.info(f'Finding pretraining file in the location {self.hyper.pretraining_file}')
                 
-                model_state = torch.load(self.hyper.pretraining_file)
-                self.load_state_dict(model_state)
+                device_id = next(self.parameters()).get_device()
                 
+                
+                model_state = torch.load(self.hyper.pretraining_file, map_location = f'cuda:{device_id}') if device_id > -1 else torch.load(self.hyper.pretraining_file)
+                
+                self.load_state_dict(model_state)
+
                 self.logger.info('Successfully loading the pretraining file!')
                 pretraining_tag = True
             except:
