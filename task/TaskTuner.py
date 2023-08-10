@@ -32,6 +32,8 @@ import nevergrad as ng
 import importlib
 from models._comTrainer import Trainer
 
+from task.util import os_rmdirs
+
 import pickle
 
 class HyperTuner(Opt):
@@ -140,18 +142,19 @@ class HyperTuner(Opt):
         if self.tuner.num_samples == 1 and self.algo_name == 'rand':
             self.best_config = self.once_sample()
         else:
-            
-            results_pkl = os.path.join(self.tuner.dir, self.algo_name, 'tuner.pkl' )
+            tuner_algo_dir = os.path.join(self.tuner.dir, self.algo_name)
+            results_pkl = os.path.join(tuner_algo_dir, 'tuner.pkl' )
             if os.path.exists(results_pkl):
                 try:
-                    analysis = ExperimentAnalysis(os.path.join(self.tuner.dir, self.algo_name))
+                    analysis = ExperimentAnalysis(tuner_algo_dir)
                     best_config = analysis.get_best_config(metric='val_acc', mode='max')
                     best_checkpoint = analysis.get_best_checkpoint(analysis.get_best_logdir(metric='val_acc', mode='max'), metric='val_acc', mode='max')
                     self.best_checkpoint_path = os.path.join(best_checkpoint.path, 'model.pth')
                     
                     self.best_config  = best_config
                 except:
-                    self._conduct()
+                    os_rmdirs()
+                    self._conduct(tuner_algo_dir)
             else:
                 self._conduct()
             # self.best_config = self._conduct()

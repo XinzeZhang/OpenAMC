@@ -142,6 +142,17 @@ class TaskDataset(Opt):
                 logger.info('Split the dataset to training set, validation set, and test set with the ration of {:.2f}, {:.2f}, and {:.2f}'.format(1- self.test_size - self.val_size, self.val_size, self.test_size))
             
             self.train_set, self.val_set, self.test_set, self.test_idx = self.dataset_Split(Signals=Signals, Labels=Labels, snrs=self.snrs, mods=self.mods, val_size=self.val_size,test_size=self.test_size)
+            
+            torch.save({
+            'train_set': self.train_set,
+            'test_set': self.test_set,
+            'val_set': self.val_set,
+            'test_idx': self.test_idx,
+            'SNRs': self.SNRs,
+            'snrs': self.snrs,
+            'mods':  self.mods  
+            }, self.info.post_data_file
+            )
         return self.train_set, self.val_set, self.test_set, self.test_idx
 
         

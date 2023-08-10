@@ -58,7 +58,6 @@ class Data(TaskDataset):
         
         return Signals, Labels, SNRs, snrs, mods
 
-
 class amcnet(AMC_Net_base):
     def task_modify(self):
         self.hyper.extend_channel = 36
@@ -83,12 +82,22 @@ class mcl(mcldnn_base):
         self.hyper.epochs = 200
         self.hyper.patience = 200
         self.hyper.gamma = 0.5
+        
+        self.tuner.resource = {
+            "cpu": 5,
+            "gpu": 0.33  # set this for GPUs
+        }
 
 class vtcnn(vtcnn2_base):
     def task_modify(self):
         self.hyper.epochs = 100
         self.hyper.patience = 10
         self.hyper.gamma = 0.5
+        
+        self.tuner.resource = {
+            "cpu": 20,
+            "gpu": 1  # set this for GPUs
+        }
 
 class awn2(awn):
     def ablation_modify(self):
@@ -98,6 +107,11 @@ class awn2(awn):
         self.tuning.gamma = tune.uniform(0.33,0.99)
         self.tuning.milestone_step = tune.qrandint(1,20,2)
         self.tuner.algo = 'tpe'
+
+        self.tuner.resource = {
+            "cpu": 5,
+            "gpu": 0.5  # set this for GPUs
+        }
 
 if __name__ == "__main__":
     args = get_parser()
