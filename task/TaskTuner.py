@@ -62,6 +62,13 @@ class HyperTuner(Opt):
             self.tuner.num_samples = 20
             if self.algo_name == 'grid':
                 self.tuner.num_samples = 1
+                
+        if 'num_cpus' not in self.tuner.dict:
+            self.tuner.num_cpus = 30
+        
+        if 'training_iteration' not in self.tuner.dict:
+            self.tuner.training_iteration = 100
+        
         
         if 'resource' not in self.tuner.dict:
             self.resource = {
@@ -70,6 +77,8 @@ class HyperTuner(Opt):
         }
         else:
             self.resource = self.tuner.resource
+            
+        # Parallel nums = min(num_cpus // cpu, num_gpus // gpu), where num_gpus = torch.cuda.device_count()
             
         self.loss_lower_bound = 0
         self.algo_init()
@@ -167,7 +176,7 @@ class HyperTuner(Opt):
         func_data.logger = self.logger
         func_data.merge(self,['hyper', 'import_path', 'class_name', 'trainer_path', 'trainer_name' ,'train_data', 'valid_data'])
         
-        ray.init(num_cpus=30)
+        ray.init(num_cpus=self.tuner.num_cpus)
         sched = ASHAScheduler()
         # self.tuner.num_samples = 80
         tuner = tune.Tuner(
@@ -192,7 +201,7 @@ class HyperTuner(Opt):
                 storage_path=self.tuner.dir,
                 verbose=1,
                 failure_config=FailureConfig(max_failures=self.tuner.num_samples // 2),
-                stop={'training_iteration':100},
+                stop={'training_iteration':self.tuner.training_iteration},
                 checkpoint_config=CheckpointConfig(
                     checkpoint_frequency=3,
                     checkpoint_at_end = True

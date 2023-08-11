@@ -394,14 +394,13 @@ class Task(Opt):
                                         
                 for (arg, value) in pT_hyper_info.items():
                     tLogger.info("Tuning Results:\t %s - %r", arg, value)
-                 
-  
                     
-                        
             return self.tune               
         except:
+            self.tune = False
             tLogger.exception(
                 '{}\nGot an error on tuning.\n{}'.format('!'*50, '!'*50))
+            raise SystemExit()
 
     # def load_tuning(self):
     #     tuner_dir = os.path.join(self.model_fit_dir, 'tuner')
