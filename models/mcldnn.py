@@ -102,15 +102,7 @@ class MCLDNN(BaseNet):
 
         return out 
     
-    def initialize_weight(self):
-        for m in self.modules():
-            if isinstance(m, nn.Conv2d) or isinstance(m, nn.Conv1d):
-                nn.init.xavier_uniform_(m.weight)
-            elif isinstance(m, nn.BatchNorm2d) or isinstance(m, nn.BatchNorm1d):
-                nn.init.constant_(m.weight, 1)
-                nn.init.constant_(m.bias, 0)
-            elif isinstance(m, nn.Linear):
-                nn.init.xavier_uniform_(m.weight)
+
                 # nn.init.constant_(m.bias, 0)
 
 

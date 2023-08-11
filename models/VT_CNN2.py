@@ -26,12 +26,12 @@ class VTCNN(BaseNet):
             nn.Dropout(0.5)
         )
         
-        # fc_input_dim = (self.hyper.sig_len + 4 - 2 + 4 - 2 ) * 80
+        fc_input_dim = (self.hyper.sig_len + 4 - 2 + 4 - 2 ) * 80
         
         # assert fc_input_dim == 10560
         
         self.fc1 = nn.Sequential(
-            nn.Linear(10560, 256),
+            nn.Linear(fc_input_dim, 256),
             nn.ReLU(),
             nn.Dropout(0.5)
         )

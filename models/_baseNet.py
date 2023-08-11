@@ -25,6 +25,16 @@ class BaseNet(nn.Module):
         for (arg, value) in hyper.dict.items():
             self.logger.info("Argument %s: %r", arg, value)
 
+    def initialize_weight(self):
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d) or isinstance(m, nn.Conv1d):
+                nn.init.xavier_uniform_(m.weight)
+            elif isinstance(m, nn.BatchNorm2d) or isinstance(m, nn.BatchNorm1d):
+                nn.init.constant_(m.weight, 1)
+                nn.init.constant_(m.bias, 0)
+            elif isinstance(m, nn.Linear):
+                nn.init.xavier_uniform_(m.weight)
+    
     def forward(self, x):
         # x = x / x.norm(p=2, dim=-1, keepdim=True)
         return x

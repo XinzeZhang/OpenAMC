@@ -418,12 +418,12 @@ if __name__ == "__main__":
     args.exp_config = 'exp_config/xinze'
     args.exp_file= 'rml16a'
     # args.exp_name = 'icassp23'
-    args.exp_name = 'demo.tuning'
+    args.exp_name = 'demo.test'
     args.gid = 0
     
     args.test = True
-    args.clean = False
-    args.model = 'awn2'
+    args.clean = True
+    args.model = 'cldnn'
     
     
     task = Task(args)

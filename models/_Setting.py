@@ -123,4 +123,9 @@ class mcldnn_base(nn_base):
 class vtcnn2_base(nn_base):
     def base_modify(self) -> None:
         self.import_path = 'models/VT_CNN2.py'
-        self.class_name = 'VTCNN'        
+        self.class_name = 'VTCNN'
+        
+class cldnn_base(nn_base):
+    def base_modify(self) -> None:
+        self.import_path = 'models/CLDNN.py'
+        self.class_name = 'CLDNN'
