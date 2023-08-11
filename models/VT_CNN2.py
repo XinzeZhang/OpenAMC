@@ -43,7 +43,8 @@ class VTCNN(BaseNet):
         self.to(self.hyper.device)
                 
     def forward(self, x):
-        x = x.view(x.shape[0],1, 2, 128)
+        x = torch.unsqueeze(x, 1)
+        # x = x.view(x.shape[0],1, 2, 128)
         x = self.conv1(x)
         x = self.conv2(x)
         x = x.view(x.shape[0],-1)

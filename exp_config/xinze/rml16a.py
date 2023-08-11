@@ -11,7 +11,7 @@ import torch
 
 from ray import tune
 
-from models._Setting import AMC_Net_base, AWN_base, mcldnn_base, vtcnn2_base
+from models._baseSetting import AMC_Net_base, AWN_base, mcldnn_base, vtcnn2_base
 
 class Data(TaskDataset):
     def __init__(self, opts):

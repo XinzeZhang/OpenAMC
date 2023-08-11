@@ -1,3 +1,10 @@
+import os, sys
+sys.path.append(os.path.join(os.path.dirname(__file__), os.path.pardir))
+
+import os
+import sys
+sys.path.append(os.path.join(os.path.dirname(__file__), os.path.pardir))
+
 from task.TaskLoader import Opt
 from ray import tune
 
@@ -33,7 +40,7 @@ class nn_base(Opt):
 
     def tuner_init(self,):
         # total cpu cores for tuning
-        self.trainer_path = 'models/_comTrainer.py'
+        self.trainer_path = 'models/_baseTrainer.py'
         self.trainer_name = 'Trainer'
         self.tuner.resource = {
             "cpu": 10,
@@ -96,7 +103,7 @@ class AMC_Net_base(nn_base):
         self.hyper.conv_chan_list = [36, 64, 128, 256]
         
 class AWN_base(nn_base):
-    def base_modify(self) -> None:
+    def base_modify(self):
         self.import_path = 'models/AWN.py'
         self.class_name = 'AWN'
         self.trainer_path = 'models/AWN.py'
@@ -113,19 +120,23 @@ class AWN_base(nn_base):
         self.hyper.in_channels = 64
         self.hyper.latent_dim = 320
 
-    
 
 class mcldnn_base(nn_base):
-    def base_modify(self) -> None:
-        self.import_path = 'models/mcldnn.py'
+    def base_modify(self):
+        self.import_path = 'models/MCLDNN.py'
         self.class_name = 'MCLDNN'
         
 class vtcnn2_base(nn_base):
-    def base_modify(self) -> None:
+    def base_modify(self):
         self.import_path = 'models/VT_CNN2.py'
         self.class_name = 'VTCNN'
         
 class cldnn_base(nn_base):
-    def base_modify(self) -> None:
+    def base_modify(self):
         self.import_path = 'models/CLDNN.py'
         self.class_name = 'CLDNN'
+        
+class dualnet_base(nn_base):
+    def base_modify(self):
+        self.import_path = 'models/Dual_Net.py'
+        self.class_name = 'DualNet'

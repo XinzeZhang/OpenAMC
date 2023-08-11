@@ -244,10 +244,6 @@ class Trainer:
                         
 
     def after_val_step(self, checkpoint = True):
-        self.logger.info(
-            '====> Epoch: {} Time: {:.2f} Val Loss: {:.6E} Val Acc: {:.3f}%'.format(self.iter, time.time() - self.t_s, self.val_loss.avg, self.val_acc.avg * 100))
-        self.logger.info('Best Epoch: {} \t Best Val Acc: {:.3f}%'.format(self.best_epoch, self.best_monitor * 100 ))
-
         if self.val_acc.avg >= self.best_monitor:
             self.best_monitor = self.val_acc.avg
             self.best_epoch = self.iter
@@ -257,6 +253,10 @@ class Trainer:
                     f'{self.cfg.model_name}' + '.best.pt'
                 torch.save(self.model.state_dict(), os.path.join(
                     self.checkpoint_folder, best_model_name))
+                
+        self.logger.info(
+            '====> Epoch: {} Time: {:.2f} Val Loss: {:.6E} Val Acc: {:.3f}%'.format(self.iter, time.time() - self.t_s, self.val_loss.avg, self.val_acc.avg * 100))
+        self.logger.info('Best Epoch: {} \t Best Val Acc: {:.3f}%'.format(self.best_epoch, self.best_monitor * 100 ))
 
         self.early_stopping(self.val_loss.avg)
 

@@ -82,7 +82,8 @@ class MCLDNN(BaseNet):
         
 
     def forward(self, x):
-        x = x.view(x.shape[0],1, 2, 128)
+        x = torch.unsqueeze(x, 1)
+        # x = x.view(x.shape[0],1, 2, 128)
         x_iq = self.conv1(x)
         x_i = self.conv2(x[:,:,0,:])
         x_q = self.conv3(x[:,:,1,:])
@@ -103,7 +104,6 @@ class MCLDNN(BaseNet):
         return out 
     
 
-                # nn.init.constant_(m.bias, 0)
 
 
 if __name__ == '__main__':

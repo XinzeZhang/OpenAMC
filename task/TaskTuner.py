@@ -30,7 +30,7 @@ from ray.tune import ExperimentAnalysis
 import nevergrad as ng
 
 import importlib
-from models._comTrainer import Trainer
+from models._baseTrainer import Trainer
 
 from task.util import os_rmdirs
 

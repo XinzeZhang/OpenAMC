@@ -8,7 +8,7 @@ import math
 import torch.nn.functional as F
 import copy
 
-from models._comTrainer import Trainer
+from models._baseTrainer import Trainer
 
 
 class BaseNet(nn.Module):
@@ -42,7 +42,7 @@ class BaseNet(nn.Module):
     def xfit(self, train_loader, val_loader):
         """
         If self.hyper has pretraining_file, then directly loading the pretraining states;\n
-        else, training the model with the Traniner in models._comTrainer.\n
+        else, training the model with the Traniner in models._baseTrainer.\n
         
         Return: fit_info
         """

@@ -2,7 +2,8 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-# from model.base_model import BaseModel
+from models._baseNet import BaseNet
+
 
 class Stream(nn.Module):
     def __init__(self):
@@ -41,7 +42,8 @@ class Stream(nn.Module):
         self.dropout_2 = nn.Dropout(0.5)
 
     def forward(self, x: torch.Tensor):
-        x = x.view(x.shape[0],1, 2, 128)
+        x = torch.unsqueeze(x, 1)
+        # x = x.view(x.shape[0],1, 2, 128)
         x = self.conv1(x)
         x = self.conv2(x)
         x = self.conv3(x)
@@ -54,24 +56,20 @@ class Stream(nn.Module):
         x = x[:,-1:,:]
         return x
 
-class DualNet(nn.Module):
-    def __init__(self, output_dim):
-        super(DualNet, self).__init__()
-        # input(batch, 1, 2, 128)
+class DualNet(BaseNet):
+    def __init__(self, hyper = None, logger = None):
+        super().__init__(hyper, logger)  
+        output_dim = hyper.num_classes
         self.steam_iq = Stream()
         self.steam_pa = Stream()
         self.fc1 = nn.Sequential(
             nn.Linear(in_features= 2500, out_features= output_dim),
-            # nn.ReLU(inplace=True),
-            # nn.Dropout(0.6),
         )
         self.initialize_weight()
-        # self.fc2 = nn.Sequential(
-        #     nn.Linear(in_features= 128, out_features= output_dim)
-        # )
 
-    def forward(self, x: torch.Tensor,y=None, is_train=False):
-        x = x.view(x.shape[0],1, 2, 128)
+    def forward(self, x: torch.Tensor):
+        x = torch.unsqueeze(x, 1)
+        # x = x.view(x.shape[0],1, 2, 128)
 
         # x_t = x[:,:,0,:] + x[:,:,1,:]*1j
         # x_fft = torch.fft.fft(x_t)
@@ -90,11 +88,6 @@ class DualNet(nn.Module):
 
         out = self.fc1(mul_feat)
         # out = F.softmax(out)
-        if is_train:
-            loss = F.cross_entropy(out,y)
-            # one_hot_y = F.one_hot(y,11).float()
-            # loss = F.binary_cross_entropy_with_logits(out,one_hot_y)
-            return loss, out
         return out
 
     def initialize_weight(self):
