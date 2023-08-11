@@ -89,6 +89,5 @@ if __name__ == "__main__":
     
     task = Task(args)
     task.conduct()
-    task.evaluate(force_update=True)
             
     

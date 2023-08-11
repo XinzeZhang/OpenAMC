@@ -1,6 +1,3 @@
-import os, sys
-sys.path.append(os.path.join(os.path.dirname(__file__), os.path.pardir))
-
 import os
 import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), os.path.pardir))
@@ -40,8 +37,7 @@ class nn_base(Opt):
 
     def tuner_init(self,):
         # total cpu cores for tuning
-        self.trainer_path = 'models/_baseTrainer.py'
-        self.trainer_name = 'Trainer'
+        self.trainer_module = ('models/_baseTrainer.py', 'Trainer')
         self.tuner.resource = {
             "cpu": 10,
             "gpu": 1  # set this for GPUs
@@ -50,8 +46,12 @@ class nn_base(Opt):
         # tuner search times
         self.tuner.num_samples = 20
         # fitness epoch per iter
-        self.tuner.epochPerIter = 50
-        # self.tuner.algo = 'rand'
+        self.tuner.training_iteration = 100
+        
+        self.tuning.lr = tune.loguniform(1e-4, 1e-2)
+        self.tuning.gamma = tune.uniform(0.33,0.99)
+        self.tuning.milestone_step = tune.qrandint(1,21,2)
+        self.tuner.algo = 'tpe'
 
     def base_modify(self,):
         pass
@@ -73,9 +73,9 @@ class nn_base(Opt):
         if "import_path" in self.dict:
             self.import_path = self.import_path.replace(
             '.py', '').replace('/', '.')
-        if "trainer_path" in self.dict:
-            self.trainer_path = self.trainer_path.replace(
-                    '.py', '').replace('/', '.')            
+        if "trainer_module" in self.dict:
+            self.trainer_module = (self.trainer_module[0].replace(
+                    '.py', '').replace('/', '.'), self.trainer_module[1])
 
 
 
@@ -106,8 +106,7 @@ class AWN_base(nn_base):
     def base_modify(self):
         self.import_path = 'models/AWN.py'
         self.class_name = 'AWN'
-        self.trainer_path = 'models/AWN.py'
-        self.trainer_name = 'AWN_Trainer'
+        self.trainer_module = (self.import_path, 'AWN_Trainer')
         
     def hyper_modify(self):        
         self.hyper.batch_size = 128
@@ -122,9 +121,20 @@ class AWN_base(nn_base):
 
 
 class mcldnn_base(nn_base):
+    '''Refer to the paper:  'A Spatiotemporal Multi-Channel Learning Framework for Automatic Modulation Recognition.
+    '''
     def base_modify(self):
         self.import_path = 'models/MCLDNN.py'
         self.class_name = 'MCLDNN'
+        self.trainer_module = (self.import_path, 'MCLDNN_Trainer')
+        
+    def hyper_modify(self):
+        self.hyper.batch_size = 400
+        self.hyper.patience = 60
+        self.hyper.milestone_step = 5
+        self.hyper.gamma = 0.8
+        
+
         
 class vtcnn2_base(nn_base):
     def base_modify(self):

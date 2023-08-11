@@ -167,6 +167,12 @@ class Task(Opt):
             self.conduct_fit(clogger= task_logger,result_file = self.model_result_file)
             
             self.fit_statue = True
+            
+            self.evaluate(elogger= task_logger)
+        else:
+            self.evaluate()
+  
+            
 
     def conduct_fit(self, clogger = None, result_file = None, innerSaving = True):
         try:
@@ -233,12 +239,12 @@ class Task(Opt):
             
             # generate the output of the testset
 
+            clogger.critical('>'*40)
+            clogger.critical('End fit.')
             pre_lab_all, label_all = self.eval_testset(model, clogger)
             
             tgt_result_file = result_file if result_file is not None else self.model_result_file # add to allow the external configuration
             
-            clogger.critical('>'*40)
-            clogger.critical('End fit.')
             if innerSaving:
                 np.savez(tgt_result_file, pred = pre_lab_all, label= label_all)
                 clogger.critical('Save result file to the location: {}'.format(tgt_result_file))
@@ -281,9 +287,9 @@ class Task(Opt):
                 
         return pre_lab_all, label_all
 
-    def evaluate(self, force_update=False, ave_confMax = False):
+    def evaluate(self, elogger = None, force_update=False, ave_confMax = False):
         eLogger = set_logger(os.path.join(self.eval_dir, '{}.{}.eval.log'.format(self.data_name, self.model_name)), '{}.{}'.format(
-                self.data_name, self.model_name.upper()), self.logger_level)
+                self.data_name, self.model_name.upper()), self.logger_level) if elogger is None else elogger
         
         if self.data_statue is False:
             self.load_data(logger=eLogger)
@@ -323,9 +329,9 @@ class Task(Opt):
         kappa = cohen_kappa_score(label_all, pre_lab_all)
         acc = np.mean(Accuracy_list)
         
-        eLogger.info(f'overall accuracy is: {acc}')
-        eLogger.info(f'macro F1-score is: {F1_score}')
-        eLogger.info(f'kappa coefficient is: {kappa}')
+        eLogger.info('Overall Accuracy is: {:.3f}%'.format(acc * 100))
+        eLogger.info(f'Macro F1-score is: {F1_score}')
+        eLogger.info(f'Kappa Coefficient is: {kappa}')
         
         if ave_confMax:
             save_confmat(Confmat_Set, self.data_opts.num_snrs, self.data_opts.classes, self.eval_plot_dir)
@@ -336,6 +342,8 @@ class Task(Opt):
         tgt_acc_file = os.path.join(self.eval_acc_dir, 'acc.npz')
         np.savez(tgt_acc_file, acc_overall = Accuracy_list, acc_mods= Accuracy_Mods)
         eLogger.info('Save accuracy file to the location: {}'.format(tgt_acc_file))
+        
+        return F1_score, kappa, acc
 
     def tuning(self):
         try:
@@ -418,14 +426,15 @@ if __name__ == "__main__":
     args.exp_config = 'exp_config/xinze'
     args.exp_file= 'rml16a'
     # args.exp_name = 'icassp23'
-    args.exp_name = 'demo.test'
+    args.exp_name = 'tuning.mcl'
     args.gid = 0
     
     args.test = True
     args.clean = True
-    args.model = 'cldnn'
+    args.model = 'mcl2'
     
     
     task = Task(args)
+    task.tuning()
     task.conduct()
-    task.evaluate(force_update=True)
+    # task.evaluate(force_update=True)     

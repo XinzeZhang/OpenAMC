@@ -11,7 +11,7 @@ import torch
 
 from ray import tune
 
-from models._baseSetting import AMC_Net_base, AWN_base, mcldnn_base, vtcnn2_base
+from models._baseSetting import AMC_Net_base, AWN_base, mcldnn_base, vtcnn2_base, dualnet_base
 
 class Data(TaskDataset):
     def __init__(self, opts):
@@ -77,16 +77,7 @@ class awn(AWN_base):
         self.hyper.latent_dim = 320    
         self.hyper.pretraining_file = 'exp_tempTest/RML2016.10a/icassp23/fit/awn/checkpoint/RML2016.10a_awn.best.pt'
     
-class mcl(mcldnn_base):
-    def task_modify(self):
-        self.hyper.epochs = 200
-        self.hyper.patience = 200
-        self.hyper.gamma = 0.5
-        
-        self.tuner.resource = {
-            "cpu": 5,
-            "gpu": 0.33  # set this for GPUs
-        }
+
 
 class vtcnn(vtcnn2_base):
     def task_modify(self):
@@ -103,15 +94,41 @@ class awn2(awn):
     def ablation_modify(self):
         self.hyper.epochs = 100
         self.hyper.pretraining_file = ''
-        self.tuning.lr = tune.loguniform(1e-4, 1e-2)
-        self.tuning.gamma = tune.uniform(0.33,0.99)
-        self.tuning.milestone_step = tune.qrandint(1,20,2)
-        self.tuner.algo = 'tpe'
-
+        self.tuner.num_samples = 2
         self.tuner.resource = {
             "cpu": 5,
             "gpu": 0.5  # set this for GPUs
         }
+
+class dualnet(dualnet_base):
+    def task_modify(self):
+        self.hyper.epochs = 200
+        self.hyper.patience = 15
+
+class mcl(mcldnn_base):
+    def task_modify(self):
+        self.hyper.epochs = 200
+
+        self.tuner.num_samples = 40
+        self.tuner.training_iteration = 200
+        self.tuner.resource = {
+            "cpu": 10,
+            "gpu": 1  # set this for GPUs
+        }
+        
+        self.tuner.points_to_evaluate=[{
+            'lr':0.001,
+            'gamma':0.8,
+            'patience':60,
+            'milestone_step':5,
+            'batch_size': 400
+        }]
+        self.tuner.using_sched = False
+        self.tuning.lr = tune.loguniform(1e-4, 1e-2)
+        self.tuning.gamma = tune.uniform(0.5,0.99)
+        self.tuning.milestone_step = tune.qrandint(2,10,1)
+        self.tuning.patience = tune.qrandint(5,100,5)
+        self.tuning.batch_size = tune.choice([64, 128, 192, 256, 320, 384, 400])
 
 if __name__ == "__main__":
     args = get_parser()
@@ -120,17 +137,16 @@ if __name__ == "__main__":
     args.exp_config = os.path.dirname(sys.argv[0]).replace(os.getcwd()+'/', '')
     args.exp_file = os.path.splitext(os.path.basename(sys.argv[0]))[0]
     # args.exp_name = 'icassp23'
-    args.exp_name = 'tuning.test'
-    args.gid = 0
+    args.exp_name = 'tuning.mcl'
+    # args.gid = 0
     
     args.test = True
-    args.clean = False
-    args.model = 'awn2'
+    args.clean = True
+    # args.model = 'awn2'
     
     
     task = Task(args)
     task.tuning()
     task.conduct()
-    task.evaluate(force_update=True)
             
     

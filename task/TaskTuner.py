@@ -32,9 +32,8 @@ import nevergrad as ng
 import importlib
 from models._baseTrainer import Trainer
 
-from task.util import os_rmdirs
+from task.util import os_rmdirs,set_logger
 
-import pickle
 
 class HyperTuner(Opt):
     def __init__(self, opts = None, logger= None, subPack = None):
@@ -69,6 +68,9 @@ class HyperTuner(Opt):
         if 'training_iteration' not in self.tuner.dict:
             self.tuner.training_iteration = 100
         
+        self.using_sched = True
+        if 'using_sched' in self.tuner.dict and self.tuner.using_sched is False:
+            self.using_sched = False
         
         if 'resource' not in self.tuner.dict:
             self.resource = {
@@ -173,11 +175,11 @@ class HyperTuner(Opt):
     def _conduct(self,):
         
         func_data = Opt()
-        func_data.logger = self.logger
-        func_data.merge(self,['hyper', 'import_path', 'class_name', 'trainer_path', 'trainer_name' ,'train_data', 'valid_data'])
+        # func_data.logger = self.logger
+        func_data.merge(self,['hyper', 'import_path', 'class_name', 'trainer_module' ,'train_data', 'valid_data'])
         
         ray.init(num_cpus=self.tuner.num_cpus)
-        sched = ASHAScheduler()
+        sched = ASHAScheduler() if self.using_sched else None
         # self.tuner.num_samples = 80
         tuner = tune.Tuner(
             tune.with_resources(
@@ -237,7 +239,11 @@ class TuningCell(tune.Trainable):
         self.base_hyper = data.hyper
         self.import_path = data.import_path
         self.class_name = data.class_name
-        self.logger = data.logger
+        # self.logger = data.logger
+        
+        logger_path = os.path.join(self.logdir, '{}.log'.format(self.class_name))
+        
+        logger = set_logger(logger_path, f'{self.class_name}.tuning', rewrite=False)
         
         _hyper = Opt()
         _hyper.merge(self.base_hyper)
@@ -246,12 +252,12 @@ class TuningCell(tune.Trainable):
         self.sample_hyper = _hyper
         _model = importlib.import_module(self.import_path)
         _model = getattr(_model, self.class_name)
-        sample_model = _model(self.sample_hyper, self.logger)
+        sample_model = _model(self.sample_hyper, logger)
         
-        trainer = importlib.import_module(data.trainer_path)
-        trainer = getattr(trainer, data.trainer_name)
+        trainer = importlib.import_module(data.trainer_module[0])
+        trainer = getattr(trainer, data.trainer_module[1])
         
-        self.trainer = trainer(sample_model, self.train_data, self.valid_data, self.base_hyper, self.logger)
+        self.trainer = trainer(sample_model, self.train_data, self.valid_data, self.base_hyper, logger)
         self.trainer.cfg.patience = self.trainer.cfg.epochs # Actually, in TuningCell, patience does not work as the same as in trainer.
         self.trainer.before_train()
     
@@ -277,3 +283,6 @@ class TuningCell(tune.Trainable):
     def load_checkpoint(self, tmp_checkpoint_dir):
         checkpoint_path = os.path.join(tmp_checkpoint_dir, "model.pth")
         self.trainer.model.load_state_dict(torch.load(checkpoint_path))        
+        
+
+   

@@ -33,16 +33,16 @@ class Stream(nn.Module):
         )
 
         self.lstm1 = nn.Sequential(
-            nn.LSTM(input_size= 80, hidden_size= 100, num_layers= 1, batch_first= True),
+            nn.LSTM(input_size= 80, hidden_size= 100, num_layers= 1, batch_first= True, dropout = 0.5),
         )
-        self.dropout_1 = nn.Dropout(0.5)
+        # self.dropout_1 = nn.Dropout(0.5)
         self.lstm2 = nn.Sequential(
-            nn.LSTM(input_size= 100, hidden_size= 50, num_layers= 1, batch_first= True),
+            nn.LSTM(input_size= 100, hidden_size= 50, num_layers= 1, batch_first= True, dropout = 0.5),
         )
-        self.dropout_2 = nn.Dropout(0.5)
+        # self.dropout_2 = nn.Dropout(0.5)
 
     def forward(self, x: torch.Tensor):
-        x = torch.unsqueeze(x, 1)
+        # x = torch.unsqueeze(x, 1)
         # x = x.view(x.shape[0],1, 2, 128)
         x = self.conv1(x)
         x = self.conv2(x)
@@ -50,9 +50,9 @@ class Stream(nn.Module):
         x = x.view(x.shape[0], 80, -1)
         x = x.transpose(1,2)
         x, (h,c) = self.lstm1(x)
-        x = self.dropout_1(x)
+        # x = self.dropout_1(x)
         x, (h,c) = self.lstm2(x)
-        x = self.dropout_2(x)
+        # x = self.dropout_2(x)
         x = x[:,-1:,:]
         return x
 

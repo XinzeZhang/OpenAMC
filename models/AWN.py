@@ -105,7 +105,7 @@ class AWN(BaseNet):
     
 class AWN_Trainer(Trainer):
     def __init__(self, model,train_loader,val_loader, cfg, logger):
-        super().__init__(model,train_loader,val_loader,                 cfg,logger)
+        super().__init__(model,train_loader,val_loader, cfg,logger)
 
     def cal_loss_acc(self, sig_batch, lab_batch):
         logit, regu_sum = self.model(sig_batch)

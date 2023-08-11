@@ -5,7 +5,9 @@ import torch.nn.functional as F
 # from model.base_model import BaseModel
 from models._baseNet import BaseNet
 import os
-
+from models._baseTrainer import Trainer
+import time
+import pandas as pd
 
 class CausalConv1d(nn.Module):
     '''Refer to https://discuss.pytorch.org/t/causal-convolution/3456/11'''
@@ -103,8 +105,47 @@ class MCLDNN(BaseNet):
 
         return out 
     
+    def _xfit(self, train_loader, val_loader):
+        net_trainer = MCLDNN_Trainer(self, train_loader, val_loader, self.hyper, self.logger)
+        net_trainer.loop()
+        fit_info = net_trainer.epochs_stats
+        return fit_info    
+    
+class MCLDNN_Trainer(Trainer):
+    def __init__(self, model,train_loader,val_loader, cfg, logger):
+        super().__init__(model,train_loader,val_loader,cfg,logger)
 
+    def after_val_step(self, checkpoint = True):
+        if self.val_acc.avg >= self.best_monitor:
+            self.best_monitor = self.val_acc.avg
+            self.best_epoch = self.iter
+            # toDo: change to annother location.
+            if checkpoint:
+                best_model_name = self.cfg.data_name + '_' + \
+                    f'{self.cfg.model_name}' + '.best.pt'
+                torch.save(self.model.state_dict(), os.path.join(
+                    self.checkpoint_folder, best_model_name))
+                
+        self.logger.info(
+            '====> Epoch: {} Time: {:.2f} Val Loss: {:.6E} Val Acc: {:.3f}%'.format(self.iter, time.time() - self.t_s, self.val_loss.avg, self.val_acc.avg * 100))
+        self.logger.info('Best Epoch: {} \t Best Val Acc: {:.3f}%'.format(self.best_epoch, self.best_monitor * 100 ))
 
+        self.early_stopping(self.val_loss.avg)
+
+        if self.early_stopping.counter >= self.cfg.milestone_step:
+            self.adjust_learning_rate(self.optimizer, self.cfg.gamma)
+
+        self.val_loss_list.append(self.val_loss.avg)
+        self.val_acc_list.append(self.val_acc.avg)
+
+        self.epochs_stats = pd.DataFrame(
+            data={"epoch": range(self.iter + 1),
+                  "lr_list": self.lr_list,
+                  "train_loss": self.train_loss_list,
+                  "val_loss": self.val_loss_list,
+                  "train_acc": self.train_acc_list,
+                  "val_acc": self.val_acc_list}
+        )
 
 if __name__ == '__main__':
     model = MCLDNN(11)
