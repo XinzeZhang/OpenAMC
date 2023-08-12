@@ -66,6 +66,7 @@ class DualNet(BaseNet):
             nn.Linear(in_features= 2500, out_features= output_dim),
         )
         self.initialize_weight()
+        self.to(self.hyper.device)
 
     def forward(self, x: torch.Tensor):
         x = torch.unsqueeze(x, 1)
