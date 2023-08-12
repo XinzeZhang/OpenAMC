@@ -106,8 +106,8 @@ class mcl(mcldnn_base):
 
         self.tuner.num_samples = 40
         self.tuner.training_iteration = self.hyper.epochs
+        # self.tuner.num_cpus = 32 * 3
         self.tuner.resource = {
-            "cpu": 10,
             "gpu": 1  # set this for GPUs
         }
         
@@ -137,7 +137,7 @@ if __name__ == "__main__":
     
     args.test = True
     args.clean = True
-    # args.model = 'awn2'
+    args.model = 'mcl'
     
     
     task = Task(args)

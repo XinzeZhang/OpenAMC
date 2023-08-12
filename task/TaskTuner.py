@@ -75,7 +75,6 @@ class HyperTuner(Opt):
         
         if 'resource' not in self.tuner.dict:
             self.resource = {
-            "cpu": 10, 
             "gpu": 1  # set this for GPUs
         }
         else:
@@ -181,7 +180,8 @@ class HyperTuner(Opt):
         func_data.merge(self,['hyper', 'import_path', 'class_name', 'trainer_module'])
         func_data.merge(self.subPack, ['train_set', 'val_set'])
         
-        ray.init(num_cpus=self.tuner.num_cpus)
+        # ray.init(num_cpus=self.tuner.num_cpus)
+        ray.init()
         sched = ASHAScheduler(time_attr='training_iteration', max_t=self.tuner.training_iteration, grace_period= 50) if self.using_sched else None
         # self.tuner.num_samples = 80
         tuner = tune.Tuner(
@@ -258,23 +258,26 @@ class TuningCell(tune.Trainable):
         self.num_workers = 0 if 'num_workers' not in _hyper.dict else  _hyper.num_workers
         train_loader, val_loader = set_fitset(batch_size=_hyper.batch_size, train_set=data.train_set, val_set=data.val_set)
         
+        self.logger.critical('Loading training set and validation set.')
+        self.logger.info(f"Train_loader batch: {len(train_loader)}")
+        self.logger.info(f"Val_loader batch: {len(val_loader)}")
+        self.logger.critical('>'*40)
+        
         _model = importlib.import_module(self.import_path)
         _model = getattr(_model, self.class_name)
         sample_model = _model(self.sample_hyper, self.logger)
         
         self.logger.critical('Loading Model.')
         self.logger.critical(f'Model: \n{str(sample_model)}')
-        self.logger.critical('Loading training set and validation set.')
-        self.logger.info(f"Train_loader batch: {len(train_loader)}")
-        self.logger.info(f"Val_loader batch: {len(val_loader)}")
-        self.logger.critical('>'*40)
+        self.logger.info(">>> Total params: {:.2f}M".format(
+                    sum(p.numel() for p in list(sample_model.parameters())) / 1000000.0))
         self.logger.critical('Start fit.')
             
         trainer = importlib.import_module(data.trainer_module[0])
         trainer = getattr(trainer, data.trainer_module[1])
         
         self.trainer = trainer(sample_model, train_loader, val_loader, self.base_hyper, self.logger)
-        self.trainer.cfg.patience = self.trainer.cfg.epochs # Actually, in TuningCell, patience does not work as the same as in trainer.
+        # self.trainer.cfg.patience = self.trainer.cfg.epochs # Actually, in TuningCell, patience does not work as the same as in trainer.
         self.trainer.before_train()
     
     def load_fitset(self, train_set = None, val_set =None, fit_batch_size = None):

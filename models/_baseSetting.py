@@ -4,7 +4,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), os.path.pardir))
 
 from task.TaskLoader import Opt
 from ray import tune
-
+import torch
 
 class nn_base(Opt):
     def __init__(self):
@@ -33,6 +33,13 @@ class nn_base(Opt):
         if "trainer_module" in self.dict:
             self.trainer_module = (self.trainer_module[0].replace(
                     '.py', '').replace('/', '.'), self.trainer_module[1])
+            
+        # if 'gpu' in self.tuner.resource:
+        #     num_gpus = torch.cuda.device_count()
+        #     trial_perGPU = int(1 // self.tuner.resource['gpu'])
+        #     self.tuner.resource['cpu'] = self.tuner.num_cpus
+        #     self.tuner.num_cpus = self.tuner.num_cpus * trial_perGPU * num_gpus
+            
     
     def base_modify(self,):
         pass
@@ -60,13 +67,13 @@ class tuner(Opt):
     def __init__(self):
         super().__init__()
         self.resource = {
-            "cpu": 10,
             "gpu": 1  # set this for GPUs
-        } # Parallel nums = min(num_cpus // cpu, num_gpus // gpu), where num_gpus = torch.cuda.device_count()
+        } # Parallel nums = min(num_cpus // cpu, num_gpus // gpu), where num_gpus = torch.cuda.device_count(), which means this setting only affects to the worker scheduler of the ray tuner, and the cpus settings does not affect the system resources the runing worker utilizes.
         
         self.num_samples = 20 # tuner num trails
         self.training_iteration = 100 # max fitness epochs per trail
         self.algo = 'tpe'
+        self.num_cpus = os.cpu_count()
 
 class tuning(Opt):
     def __init__(self):

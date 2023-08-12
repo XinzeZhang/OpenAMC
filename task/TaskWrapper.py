@@ -200,24 +200,24 @@ class Task(Opt):
                     cid_hyper.pretraining_file = self.best_checkpoint_path
 
             
+
+            train_loader, val_loader = self.data_opts.load_fitset(fit_batch_size = cid_hyper.batch_size)
+            clogger.critical('Loading training set and validation set.')
+            clogger.info(f"Train_loader batch: {len(train_loader)}")
+            clogger.info(f"Val_loader batch: {len(val_loader)}")
+            clogger.critical('>'*40)
+            
+            
             model = self.model_import()
             model = model(cid_hyper, clogger) #todo: check model_fit_dir in model and model trainer
-
             clogger.critical('Loading Model.')
             clogger.critical(f'Model: \n{str(model)}')
 
             if self.model_opts.arch == 'torch_nn':
                 clogger.info(">>> Total params: {:.2f}M".format(
                     sum(p.numel() for p in list(model.parameters())) / 1000000.0))         
-            
-            train_loader, val_loader = self.data_opts.load_fitset(fit_batch_size = cid_hyper.batch_size)
-            
-            clogger.critical('Loading training set and validation set.')
-            clogger.info(f"Train_loader batch: {len(train_loader)}")
-            clogger.info(f"Val_loader batch: {len(val_loader)}")
-            clogger.critical('>'*40)
+    
             clogger.critical('Start fit.')
-            
             epochs_stats =  model.xfit(train_loader, val_loader) 
             # epochs_stats is a dataframe with the following columns at least
             # pd.DataFrame(

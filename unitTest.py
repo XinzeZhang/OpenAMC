@@ -52,3 +52,10 @@ a = demo()
 print(a.unit)
 
 # %%
+import os
+os.cpu_count()
+# %%
+1 // 0.5
+# %%
+1 // 0.3
+# %%
