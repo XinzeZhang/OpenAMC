@@ -36,3 +36,19 @@ a.max()
 # %%
 10 % 3
 # %%
+from task.TaskLoader import Opt
+
+class demo(Opt):
+    def __init__(self):
+        super().__init__()
+        self._unit = 0
+    
+    @property
+    def unit(self):
+        return self._unit
+    
+# %%
+a = demo()
+print(a.unit)
+
+# %%

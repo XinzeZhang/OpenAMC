@@ -11,63 +11,20 @@ class nn_base(Opt):
         super().__init__()
         
         self.arch = 'torch_nn'
+        self.trainer_module = ('models/_baseTrainer.py', 'Trainer')
         
-        self.hyper = Opt()
-        self.tuner = Opt()
-        self.tuning = Opt()
-
-        self.hyper_init()
-        self.tuner_init()
-
+        self.hyper = hyper()
+        self.tuner = tuner()
+        self.tuning = tuning()
+        
         self.base_modify()
         self.hyper_modify()
-
         self.tuning_modify()
+        
         self.task_modify()
         self.ablation_modify()
         
         self.common_process()
-
-    def hyper_init(self,):
-        self.hyper.epochs = 100
-        self.hyper.patience = 10
-        self.hyper.milestone_step = 3
-        self.hyper.gamma = 0.5
-        self.hyper.lr = 0.001
-
-    def tuner_init(self,):
-        # total cpu cores for tuning
-        self.trainer_module = ('models/_baseTrainer.py', 'Trainer')
-        self.tuner.resource = {
-            "cpu": 10,
-            "gpu": 1  # set this for GPUs
-        }
-        # gpu cards per trial in tune
-        # tuner search times
-        self.tuner.num_samples = 20
-        # fitness epoch per iter
-        self.tuner.training_iteration = 100
-        
-        self.tuning.lr = tune.loguniform(1e-4, 1e-2)
-        self.tuning.gamma = tune.uniform(0.33,0.99)
-        self.tuning.milestone_step = tune.qrandint(1,21,2)
-        self.tuner.algo = 'tpe'
-
-    def base_modify(self,):
-        pass
-
-    def hyper_modify(self,):
-        pass
-
-    def tuning_modify(self):
-        pass
-
-    def ablation_modify(self):
-        pass
-
-    def task_modify(self):
-        pass
-
 
     def common_process(self,):
         if "import_path" in self.dict:
@@ -76,19 +33,49 @@ class nn_base(Opt):
         if "trainer_module" in self.dict:
             self.trainer_module = (self.trainer_module[0].replace(
                     '.py', '').replace('/', '.'), self.trainer_module[1])
-
-
-
-# class mlp_base(nn_base):
-#     def base_modify(self):
-#         self.import_path = 'models/training/MLP.py'
-#         self.class_name = 'mlp'
     
-#     def hyper_init(self):
-#         self.hyper.hidden_size = 400
-#         self.hyper.epochs = 1000
-#         self.hyper.learning_rate = 0.01
-#         self.hyper.step_lr = 20
+    def base_modify(self,):
+        pass
+    def hyper_modify(self,):
+        pass
+    def tuning_modify(self):
+        pass
+    def ablation_modify(self):
+        pass
+    def task_modify(self):
+        pass
+
+
+
+class hyper(Opt):
+    def __init__(self):
+        super().__init__()
+        self.epochs = 100
+        self.patience = 10
+        self.milestone_step = 3
+        self.gamma = 0.5
+        self.lr = 0.001
+
+class tuner(Opt):
+    def __init__(self):
+        super().__init__()
+        self.resource = {
+            "cpu": 10,
+            "gpu": 1  # set this for GPUs
+        } # Parallel nums = min(num_cpus // cpu, num_gpus // gpu), where num_gpus = torch.cuda.device_count()
+        
+        self.num_samples = 20 # tuner num trails
+        self.training_iteration = 100 # max fitness epochs per trail
+        self.algo = 'tpe'
+
+class tuning(Opt):
+    def __init__(self):
+        super().__init__()
+        self.lr = tune.loguniform(1e-4, 1e-2)
+        self.gamma = tune.uniform(0.33,0.99)
+        self.milestone_step = tune.qrandint(1,21,2)
+        
+        
 
 class AMC_Net_base(nn_base):
     def base_modify(self):

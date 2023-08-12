@@ -135,7 +135,7 @@ class HyperTuner(Opt):
         model = importlib.import_module(self.import_path)
         model = getattr(model, self.class_name)
         model = model(_hyper, self.logger)
-        fit_info = model.xfit(self.train_data, self.valid_data,)
+        fit_info = model.xfit(self.train_data, self.valid_data)
         t_acc, v_acc = fit_info.train_acc.max(), fit_info.val_acc.max()   
         
         metric_dict = {
@@ -203,10 +203,12 @@ class HyperTuner(Opt):
                 storage_path=self.tuner.dir,
                 verbose=1,
                 failure_config=FailureConfig(max_failures=self.tuner.num_samples // 2),
-                stop={'training_iteration':self.tuner.training_iteration},
+                stop={'training_iteration':self.tuner.training_iteration,
+                      'stop_counter': self.hyper.patience},
                 checkpoint_config=CheckpointConfig(
-                    checkpoint_frequency=3,
-                    checkpoint_at_end = True
+                    num_to_keep=3,
+                    checkpoint_score_attribute =self.metric,
+                    checkpoint_score_order='max'
                 ),
                 sync_config=tune.SyncConfig(
                     syncer=None
@@ -224,7 +226,6 @@ class HyperTuner(Opt):
         self.best_config.merge(best_result.config)
         self.best_result = best_result.metrics
         self.best_checkpoint_path = os.path.join(best_result.checkpoint.path, 'model.pth')
-        # self.logger.info("Best config is:", self.best_config.dict)
       
     
 
@@ -273,6 +274,7 @@ class TuningCell(tune.Trainable):
         return {
             'tra_acc': t_acc,
             'val_acc': v_acc,
+            'stop_counter': self.trainer.early_stopping.counter 
         }
     
     def save_checkpoint(self, tmp_checkpoint_dir):

@@ -76,6 +76,11 @@ class awn(AWN_base):
         self.hyper.in_channels = 64
         self.hyper.latent_dim = 320    
         self.hyper.pretraining_file = 'exp_tempTest/RML2016.10a/icassp23/fit/awn/checkpoint/RML2016.10a_awn.best.pt'
+        
+        self.tuner.resource = {
+            "cpu": 5,
+            "gpu": 0.5  # set this for GPUs
+        }
     
 
 
@@ -85,16 +90,6 @@ class vtcnn(vtcnn2_base):
         self.hyper.patience = 10
         self.hyper.gamma = 0.5
         
-        self.tuner.resource = {
-            "cpu": 20,
-            "gpu": 1  # set this for GPUs
-        }
-
-class awn2(awn):
-    def ablation_modify(self):
-        self.hyper.epochs = 100
-        self.hyper.pretraining_file = ''
-        self.tuner.num_samples = 2
         self.tuner.resource = {
             "cpu": 5,
             "gpu": 0.5  # set this for GPUs
@@ -107,10 +102,10 @@ class dualnet(dualnet_base):
 
 class mcl(mcldnn_base):
     def task_modify(self):
-        self.hyper.epochs = 200
+        self.hyper.epochs = 100
 
         self.tuner.num_samples = 40
-        self.tuner.training_iteration = 200
+        self.tuner.training_iteration = self.hyper.epochs
         self.tuner.resource = {
             "cpu": 10,
             "gpu": 1  # set this for GPUs
@@ -119,16 +114,16 @@ class mcl(mcldnn_base):
         self.tuner.points_to_evaluate=[{
             'lr':0.001,
             'gamma':0.8,
-            'patience':60,
             'milestone_step':5,
             'batch_size': 400
         }]
+        
         self.tuner.using_sched = False
         self.tuning.lr = tune.loguniform(1e-4, 1e-2)
         self.tuning.gamma = tune.uniform(0.5,0.99)
         self.tuning.milestone_step = tune.qrandint(2,10,1)
-        self.tuning.patience = tune.qrandint(5,100,5)
-        self.tuning.batch_size = tune.choice([64, 128, 192, 256, 320, 384, 400])
+        self.tuning.batch_size = tune.choice([64, 128, 192, 256, 320])
+        
 
 if __name__ == "__main__":
     args = get_parser()

@@ -234,10 +234,7 @@ class TaskDataset(Opt):
 
         return train_loader, val_loader
     
-    def load_testset(self):
-        """
-        docstring
-        """
+    def load_testset(self, test_batch_size = 64):
         Signals_test, Labels_test = self.test_set
         
         Sample_list = []
@@ -245,15 +242,16 @@ class TaskDataset(Opt):
         
         if 'num_snrs' not in self.dict:
             self.num_snrs = list(np.unique(self.snrs))
-            
+        
+        
         for snr in self.num_snrs:
             test_SNRs = map(lambda x: self.SNRs[x], self.test_idx)
             test_SNRs = list(test_SNRs)
             test_SNRs = np.array(test_SNRs).squeeze()
             test_sig_i = Signals_test[np.where(np.array(test_SNRs) == snr)]
             test_lab_i = Labels_test[np.where(np.array(test_SNRs) == snr)]
-            Sample = torch.chunk(test_sig_i, self.batch_size, dim=0)
-            Label = torch.chunk(test_lab_i,self.batch_size, dim=0)
+            Sample = torch.chunk(test_sig_i, test_batch_size, dim=0)
+            Label = torch.chunk(test_lab_i, test_batch_size, dim=0)
             
             Sample_list.append(Sample)
             Label_list.append(Label)
