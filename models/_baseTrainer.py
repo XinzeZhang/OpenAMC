@@ -4,8 +4,10 @@ import time
 import pandas as pd
 import torch
 from torch import optim, nn
-from tqdm import tqdm, trange
-from torch.optim import lr_scheduler
+from ray.experimental.tqdm_ray import tqdm as ray_tqdm
+from tqdm import trange
+from tqdm import tqdm as real_tqdm
+# from torch.optim import lr_scheduler
 
 import numpy as np
 from task.util import os_makedirs
@@ -167,33 +169,39 @@ class Trainer:
         
         return loss, acc
 
-    def run_train_step(self):
-        with tqdm(total=len(self.train_loader),
-                  desc=f'Epoch{self.iter}/{self.cfg.epochs}',
-                  postfix=dict,
-                  mininterval=0.3) as pbar:
-            for step, (sig_batch, lab_batch) in enumerate(self.train_loader):
+    def run_train_step(self, ray = False):
+        
+        if ray:
+            for step, (sig_batch, lab_batch) in ray_tqdm(enumerate(self.train_loader),  total=len(self.train_loader)):
                 sig_batch = sig_batch.to(self.cfg.device)
                 lab_batch = lab_batch.to(self.cfg.device)
-
-                # logit = self.model(sig_batch)
-                # loss = self.criterion(logit, lab_batch)
-
                 loss, acc = self.cal_loss_acc(sig_batch, lab_batch)
                 self.optimizer.zero_grad()
                 loss.backward()
                 self.optimizer.step()
 
-                # pre_lab = torch.argmax(logit, 1)
-                # acc = torch.sum(pre_lab == lab_batch.data).double(
-                # ).item() / lab_batch.size(0)
-
                 self.train_loss.update(loss.item())
                 self.train_acc.update(acc)
+        else:
+            # pass
+            with real_tqdm(total=len(self.train_loader),
+                    desc=f'Epoch{self.iter}/{self.cfg.epochs}',
+                    postfix=dict,
+                    mininterval=0.3) as pbar:
+                for step, (sig_batch, lab_batch) in enumerate(self.train_loader):
+                    sig_batch = sig_batch.to(self.cfg.device)
+                    lab_batch = lab_batch.to(self.cfg.device)
+                    loss, acc = self.cal_loss_acc(sig_batch, lab_batch)
+                    self.optimizer.zero_grad()
+                    loss.backward()
+                    self.optimizer.step()
 
-                pbar.set_postfix(**{'train_loss': self.train_loss.avg,
-                                    'train_acc': self.train_acc.avg})
-                pbar.update(1)
+                    self.train_loss.update(loss.item())
+                    self.train_acc.update(acc)
+
+                    pbar.set_postfix(**{'train_loss': self.train_loss.avg,
+                                        'train_acc': self.train_acc.avg})
+                    pbar.update(1)
                 
         return self.train_loss.avg, self.train_acc.avg
                     
@@ -214,31 +222,36 @@ class Trainer:
         self.val_acc = AverageMeter()
         self.logger.info(f"Starting validation epoch {self.iter}:")
 
-    def run_val_step(self):
-        with tqdm(total=len(self.val_loader),
-                  desc=f'Epoch{self.iter}/{self.cfg.epochs}',
-                  postfix=dict,
-                  mininterval=0.3,
-                  colour='blue') as pbar:
-            for step, (sig_batch, lab_batch) in enumerate(self.val_loader):
+    def run_val_step(self, ray = False):
+        if ray:
+            for step, (sig_batch, lab_batch) in ray_tqdm(enumerate(self.val_loader), total=len(self.val_loader)):
                 with torch.no_grad():
                     sig_batch = sig_batch.to(self.cfg.device)
                     lab_batch = lab_batch.to(self.cfg.device)
 
                     loss, acc = self.cal_loss_acc(sig_batch, lab_batch)
-                    # logit = self.model(sig_batch)
-                    # loss = self.criterion(logit, lab_batch)
-
-                    # pre_lab = torch.argmax(logit, 1)
-                    # acc = torch.sum(pre_lab == lab_batch.data).double(
-                    # ).item() / lab_batch.size(0)
 
                     self.val_loss.update(loss.item())
                     self.val_acc.update(acc)
+        else:
+            with real_tqdm(total=len(self.val_loader),
+                    desc=f'Epoch{self.iter}/{self.cfg.epochs}',
+                    postfix=dict,
+                    mininterval=0.3,
+                    colour='blue') as pbar:
+                for step, (sig_batch, lab_batch) in enumerate(self.val_loader):
+                    with torch.no_grad():
+                        sig_batch = sig_batch.to(self.cfg.device)
+                        lab_batch = lab_batch.to(self.cfg.device)
 
-                    pbar.set_postfix(**{'val_loss': self.val_loss.avg,
-                                        'val_acc': self.val_acc.avg})
-                    pbar.update(1)
+                        loss, acc = self.cal_loss_acc(sig_batch, lab_batch)
+
+                        self.val_loss.update(loss.item())
+                        self.val_acc.update(acc)
+
+                        pbar.set_postfix(**{'val_loss': self.val_loss.avg,
+                                            'val_acc': self.val_acc.avg})
+                        pbar.update(1)
 
         return self.val_loss.avg, self.val_acc.avg
                         

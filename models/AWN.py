@@ -7,7 +7,6 @@ import torch.nn as nn
 
 from models._baseNet import BaseNet
 from models._baseTrainer import Trainer
-from tqdm import tqdm
 
 class AWN(BaseNet):
     def __init__(self, hyper = None, logger = None):

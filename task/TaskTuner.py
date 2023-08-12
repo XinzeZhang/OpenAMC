@@ -308,10 +308,10 @@ class TuningCell(tune.Trainable):
     
     def step(self,):
         self.trainer.before_train_step()
-        _, t_acc = self.trainer.run_train_step()
+        _, t_acc = self.trainer.run_train_step(ray=True)
         self.trainer.after_train_step()
         self.trainer.before_val_step()
-        _, v_acc = self.trainer.run_val_step()
+        _, v_acc = self.trainer.run_val_step(ray=True)
         self.trainer.after_val_step(checkpoint = False)
         self.trainer.iter += 1      
         
