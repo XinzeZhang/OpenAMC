@@ -165,8 +165,10 @@ class HyperTuner(Opt):
                     
                     self.best_config  = best_config
                 except:
-                    os_rmdirs()
-                    self._conduct(tuner_algo_dir)
+                    raise ValueError('Error in loading the tuning results in {}\nPlease check the tuning results carefully, then remove it and rerun.'.format(tuner_algo_dir))
+                    # raise SystemExit()
+                    # os_rmdirs(tuner_algo_dir) 
+                    # self._conduct(tuner_algo_dir)
             else:
                 self._conduct()
             # self.best_config = self._conduct()
