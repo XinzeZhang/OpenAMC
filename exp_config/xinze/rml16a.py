@@ -75,7 +75,7 @@ class awn(AWN_base):
         self.hyper.kernel_size = 3
         self.hyper.in_channels = 64
         self.hyper.latent_dim = 320    
-        self.hyper.pretraining_file = 'exp_tempTest/RML2016.10a/icassp23/fit/awn/checkpoint/RML2016.10a_awn.best.pt'
+        self.hyper.pretraining_file =         'exp_results/RML2016.10a/ICASSP23/fit/awn/tuner/tpe/TuningCell_743b4993_8_gamma=0.6784,lr=0.0004,milestone_step=5_2023-08-09_03-35-19/checkpoint_000054/model.pth'
         
         self.tuner.resource = {
             "cpu": 5,
