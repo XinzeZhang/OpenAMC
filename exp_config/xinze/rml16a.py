@@ -118,11 +118,11 @@ class mcl(mcldnn_base):
             'batch_size': 400
         }]
         
-        self.tuner.using_sched = False
+        # self.tuner.using_sched = False
         self.tuning.lr = tune.loguniform(1e-4, 1e-2)
         self.tuning.gamma = tune.uniform(0.5,0.99)
         self.tuning.milestone_step = tune.qrandint(2,10,1)
-        self.tuning.batch_size = tune.choice([64, 128, 192, 256, 320])
+        self.tuning.batch_size = tune.choice([64, 128, 192, 256, 320, 400])
         
 
 if __name__ == "__main__":

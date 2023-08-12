@@ -4,6 +4,7 @@ import numpy as np
 import torch
 import torch.utils.data as Data
 import os
+from task.util import set_fitset
 
 class Opt(object):
     def __init__(self, init=None):
@@ -210,27 +211,9 @@ class TaskDataset(Opt):
             test_idx
 
 
-    def load_fitset(self):
-
-        train_data = Data.TensorDataset(*self.train_set)
-        val_data = Data.TensorDataset(*self.val_set)
-
-        train_loader = Data.DataLoader(
-            dataset=train_data,
-            batch_size=self.batch_size,
-            shuffle=True,
-            num_workers=self.num_workers,
-        )
-
-        val_loader = Data.DataLoader(
-            dataset=val_data,
-            batch_size=self.batch_size,
-            shuffle=True,
-            num_workers=self.num_workers,
-        )
-
-        # logger.info(f"train_loader batch: {len(train_loader)}")
-        # logger.info(f"val_loader batch: {len(val_loader)}")
+    def load_fitset(self, fit_batch_size = None):
+        _fit_batch_size = fit_batch_size if fit_batch_size is not None else self.batch_size
+        train_loader, val_loader = set_fitset(batch_size= _fit_batch_size, num_workers=self.num_workers, train_set=self.train_set, val_set=self.val_set)
 
         return train_loader, val_loader
     

@@ -62,7 +62,7 @@ class Task(Opt):
                     'Non-supported model "{}" in the "{}" module, please check the module or the model name'.format(self.model_name, self.exp_module_path))
 
         self.model_opts = model_opts()
-        self.model_opts.hyper.merge(opts=self.data_opts.info)
+        self.model_opts.hyper.merge(opts=self.data_opts.info) #   Only merge the key-value not in the current hyper.\n
         
         if 'hyper' in vars(args):
             self.model_opts.hyper.update(args.hyper)
@@ -135,10 +135,6 @@ class Task(Opt):
         logger.critical(
             'Loading the datasets {}'.format(self.data_name))
         self.data_opts.info.seed = self.seed
-        
-        if 'batch_size' in self.model_opts.hyper.dict:
-            self.data_opts.batch_size = self.model_opts.hyper.batch_size
-            self.data_opts.info.batch_size = self.data_opts.batch_size
             
         # self.data_opts.load_rawdata(logger = logger)
         self.data_opts.pack_dataset(logger = logger)
@@ -214,8 +210,7 @@ class Task(Opt):
                 clogger.info(">>> Total params: {:.2f}M".format(
                     sum(p.numel() for p in list(model.parameters())) / 1000000.0))         
             
-            
-            train_loader, val_loader = self.data_opts.load_fitset()
+            train_loader, val_loader = self.data_opts.load_fitset(fit_batch_size = cid_hyper.batch_size)
             
             clogger.critical('Loading training set and validation set.')
             clogger.info(f"Train_loader batch: {len(train_loader)}")

@@ -13,6 +13,8 @@ import random
 import numpy as np
 import torch
 
+import torch.utils.data as Data
+
 def fix_seed(seed):
     seed = int(seed)
     random.seed(seed)
@@ -81,3 +83,22 @@ def set_logger(log_path, log_name, level = 20, rewrite = True):
     logger.addHandler(TqdmHandler(fmt))
 
     return logger
+
+def set_fitset(batch_size = 64, num_workers = 0, train_set = None, val_set = None):
+    train_data = Data.TensorDataset(*train_set)
+    val_data = Data.TensorDataset(*val_set)
+
+    train_loader = Data.DataLoader(
+        dataset=train_data,
+        batch_size=batch_size,
+        shuffle=True,
+        num_workers=num_workers,
+    )
+
+    val_loader = Data.DataLoader(
+        dataset=val_data,
+        batch_size=batch_size,
+        shuffle=True,
+        num_workers=num_workers,
+    )
+    return train_loader, val_loader

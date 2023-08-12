@@ -3,6 +3,7 @@ import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), os.path.pardir))
 
 import torch
+import torch.utils.data as Data
 
 import ray
 from task.TaskLoader import Opt
@@ -30,9 +31,8 @@ from ray.tune import ExperimentAnalysis
 import nevergrad as ng
 
 import importlib
-from models._baseTrainer import Trainer
 
-from task.util import os_rmdirs,set_logger
+from task.util import os_rmdirs,set_logger,set_fitset
 
 
 class HyperTuner(Opt):
@@ -51,10 +51,11 @@ class HyperTuner(Opt):
         
         self.logger = logger
         
-        train_loader, val_loader = subPack.load_fitset()
-        self.train_data = train_loader
-        self.valid_data = val_loader
-        self.batch_size = subPack.batch_size
+        # train_loader, val_loader = subPack.load_fitset()
+        # self.batch_size = subPack.batch_size
+        self.subPack = subPack
+        # self.train_data = subPack.train_set
+        # self.valid_data = subPack.val_set
         
         self.metric = 'val_acc'
         if 'num_samples' not in self.tuner.dict:
@@ -135,7 +136,9 @@ class HyperTuner(Opt):
         model = importlib.import_module(self.import_path)
         model = getattr(model, self.class_name)
         model = model(_hyper, self.logger)
-        fit_info = model.xfit(self.train_data, self.valid_data)
+        
+        train_loader, val_loader = self.subPack.load_fitset(_hyper.batch_size)
+        fit_info = model.xfit(train_loader, val_loader)
         t_acc, v_acc = fit_info.train_acc.max(), fit_info.val_acc.max()   
         
         metric_dict = {
@@ -144,7 +147,6 @@ class HyperTuner(Opt):
         }
         self.best_result = metric_dict[self.metric]
         self.best_config.merge(config)
-        # self.logger.info("Best config is:", self.best_config.dict)
         return self.best_config
 
     def conduct(self,):
@@ -176,10 +178,11 @@ class HyperTuner(Opt):
         
         func_data = Opt()
         # func_data.logger = self.logger
-        func_data.merge(self,['hyper', 'import_path', 'class_name', 'trainer_module' ,'train_data', 'valid_data'])
+        func_data.merge(self,['hyper', 'import_path', 'class_name', 'trainer_module'])
+        func_data.merge(self.subPack, ['train_set', 'val_set'])
         
         ray.init(num_cpus=self.tuner.num_cpus)
-        sched = ASHAScheduler() if self.using_sched else None
+        sched = ASHAScheduler(time_attr='training_iteration', max_t=self.tuner.training_iteration, grace_period= 50) if self.using_sched else None
         # self.tuner.num_samples = 80
         tuner = tune.Tuner(
             tune.with_resources(
@@ -235,32 +238,70 @@ class TuningCell(tune.Trainable):
     see https://docs.ray.io/en/latest/tune/examples/tune-pytorch-cifar.html#the-train-function
     '''
     def setup(self, config, data=None):
-        self.train_data = data.train_data
-        self.valid_data = data.valid_data
+        self.train_data = data.train_set
+        self.valid_data = data.val_set
         self.base_hyper = data.hyper
         self.import_path = data.import_path
         self.class_name = data.class_name
         # self.logger = data.logger
         
         logger_path = os.path.join(self.logdir, '{}.log'.format(self.class_name))
+        self.logger = set_logger(logger_path, f'{self.class_name}.tuning', rewrite=False)
         
-        logger = set_logger(logger_path, f'{self.class_name}.tuning', rewrite=False)
         
         _hyper = Opt()
         _hyper.merge(self.base_hyper)
         _hyper.update(config) # Using ignore_unk will be very risky
         
+        
         self.sample_hyper = _hyper
+        self.num_workers = 0 if 'num_workers' not in _hyper.dict else  _hyper.num_workers
+        train_loader, val_loader = set_fitset(batch_size=_hyper.batch_size, train_set=data.train_set, val_set=data.val_set)
+        
         _model = importlib.import_module(self.import_path)
         _model = getattr(_model, self.class_name)
-        sample_model = _model(self.sample_hyper, logger)
+        sample_model = _model(self.sample_hyper, self.logger)
         
+        self.logger.critical('Loading Model.')
+        self.logger.critical(f'Model: \n{str(sample_model)}')
+        self.logger.critical('Loading training set and validation set.')
+        self.logger.info(f"Train_loader batch: {len(train_loader)}")
+        self.logger.info(f"Val_loader batch: {len(val_loader)}")
+        self.logger.critical('>'*40)
+        self.logger.critical('Start fit.')
+            
         trainer = importlib.import_module(data.trainer_module[0])
         trainer = getattr(trainer, data.trainer_module[1])
         
-        self.trainer = trainer(sample_model, self.train_data, self.valid_data, self.base_hyper, logger)
+        self.trainer = trainer(sample_model, train_loader, val_loader, self.base_hyper, self.logger)
         self.trainer.cfg.patience = self.trainer.cfg.epochs # Actually, in TuningCell, patience does not work as the same as in trainer.
         self.trainer.before_train()
+    
+    def load_fitset(self, train_set = None, val_set =None, fit_batch_size = None):
+
+        _fit_batch_size = fit_batch_size if fit_batch_size is not None else self.batch_size
+
+        train_data = Data.TensorDataset(*train_set)
+        val_data = Data.TensorDataset(*val_set)
+
+        train_loader = Data.DataLoader(
+            dataset=train_data,
+            batch_size=_fit_batch_size,
+            shuffle=True,
+            num_workers=self.num_workers,
+        )
+
+        val_loader = Data.DataLoader(
+            dataset=val_data,
+            batch_size=_fit_batch_size,
+            shuffle=True,
+            num_workers=self.num_workers,
+        )
+
+        # logger.info(f"train_loader batch: {len(train_loader)}")
+        # logger.info(f"val_loader batch: {len(val_loader)}")
+
+        return train_loader, val_loader
     
     def step(self,):
         self.trainer.before_train_step()
