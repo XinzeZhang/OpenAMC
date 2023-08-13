@@ -30,7 +30,7 @@ def get_parser(parsing = True):
     # experimental log parameters
     parser.add_argument('-test', default=False,action='store_true',
                         help='Whether to use unitTest mode')
-    parser.add_argument('-clean', default=True, action='store_true',
+    parser.add_argument('-clean', default=False, action='store_true',
                         help='Whether to clean the unitTest folder after each trail')    
     parser.add_argument('-logger_level', type=int, default=20, help='experiment log level')
 

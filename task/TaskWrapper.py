@@ -38,6 +38,8 @@ class Task(Opt):
         self.data_statue = False
         self.fit_statue = False
         self.tune = False
+        if self.model_opts.tuner.statue:
+            self.tune = True
         
     def data_config(self, args):
         # data_opts = getattr(self.exp_module_path, args.dataset + '_data')
@@ -153,7 +155,10 @@ class Task(Opt):
     def conduct(self, force_update = False):
         # os_makedirs(self.model_fit_dir)        
         # for i in tqdm(self.cid_list):
-        if not os.path.exists(self.model_result_file) or force_update:     
+        if force_update or not os.path.exists(self.model_result_file):
+            if force_update:
+                os_rmdirs(self.model_pred_dir)
+            
             os_makedirs(self.model_pred_dir)
         
             task_logger= self.logger_config(
@@ -426,7 +431,7 @@ if __name__ == "__main__":
     
     args.test = True
     args.clean = True
-    args.model = 'mcl2'
+    args.model = 'awn'
     
     
     task = Task(args)

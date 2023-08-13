@@ -105,7 +105,7 @@ class Trainer:
         self.logger = logger
         self.model = model.to(self.cfg.device)
 
-        self.iter = 0
+        self.iter = 1
 
     def loop(self):
         
@@ -115,7 +115,7 @@ class Trainer:
         
         self.before_train()
         
-        for self.iter in trange(0, self.cfg.epochs):
+        for self.iter in trange(1, self.cfg.epochs + 1):
             self.before_train_step()
             self.run_train_step()
             self.after_train_step()
@@ -280,7 +280,7 @@ class Trainer:
         self.val_acc_list.append(self.val_acc.avg)
 
         self.epochs_stats = pd.DataFrame(
-            data={"epoch": range(self.iter + 1),
+            data={"epoch": range(self.iter),
                   "lr_list": self.lr_list,
                   "train_loss": self.train_loss_list,
                   "val_loss": self.val_loss_list,

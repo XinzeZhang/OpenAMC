@@ -213,7 +213,8 @@ class HyperTuner(Opt):
                 checkpoint_config=CheckpointConfig(
                     num_to_keep=3,
                     checkpoint_score_attribute =self.metric,
-                    checkpoint_score_order='max'
+                    checkpoint_score_order='max',
+                    checkpoint_frequency= 1
                 ),
                 sync_config=tune.SyncConfig(
                     syncer=None
@@ -227,7 +228,7 @@ class HyperTuner(Opt):
         df.to_csv(os.path.join(self.tuner.dir, '{}.trial.csv'.format(self.algo_name)))
         ray.shutdown()
         
-        best_result = results.get_best_result(self.metric, 'min')
+        best_result = results.get_best_result(self.metric, 'max')
         self.best_config.merge(best_result.config)
         self.best_result = best_result.metrics
         self.best_checkpoint_path = os.path.join(best_result.checkpoint.path, 'model.pth')

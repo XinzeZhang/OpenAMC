@@ -62,6 +62,7 @@ class hyper(Opt):
         self.milestone_step = 3
         self.gamma = 0.5
         self.lr = 0.001
+        self.pretraining_file = ''
 
 class tuner(Opt):
     def __init__(self):
@@ -74,6 +75,7 @@ class tuner(Opt):
         self.training_iteration = 100 # max fitness epochs per trail
         self.algo = 'tpe'
         self.num_cpus = os.cpu_count()
+        self.statue = False
 
 class tuning(Opt):
     def __init__(self):
