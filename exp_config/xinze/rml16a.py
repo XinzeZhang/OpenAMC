@@ -114,21 +114,21 @@ class mcl(mcldnn_base):
         self.tuner.training_iteration = self.hyper.epochs
         # self.tuner.num_cpus = 32 * 3
         self.tuner.resource = {
-            "gpu": 1  # set this for GPUs
+            "gpu": 0.5  # set this for GPUs
         }
         
-        self.tuner.points_to_evaluate=[{
-            'lr':0.001,
-            'gamma':0.8,
-            'milestone_step':5,
-            'batch_size': 400
-        }]
+        # self.tuner.points_to_evaluate=[{
+        #     'lr':0.001,
+        #     'gamma':0.8,
+        #     'milestone_step':5,
+        #     'batch_size': 400
+        # }]
         
         # self.tuner.using_sched = False
         self.tuning.lr = tune.loguniform(1e-4, 2e-3)
         self.tuning.gamma = tune.uniform(0.5,0.99)
         self.tuning.milestone_step = tune.qrandint(1,10,1)
-        self.tuning.batch_size = tune.choice([64, 192, 256, 400])
+        self.tuning.batch_size = tune.choice([64, 96, 128, 160, 192])
         
 
 if __name__ == "__main__":
@@ -138,17 +138,17 @@ if __name__ == "__main__":
     args.exp_config = os.path.dirname(sys.argv[0]).replace(os.getcwd()+'/', '')
     args.exp_file = os.path.splitext(os.path.basename(sys.argv[0]))[0]
     # args.exp_name = 'icassp23'
-    args.exp_name = 'mcl.rerun'
-    args.force_update = True
-    args.gid = 2
+    args.exp_name = 'mcl.0813'
+    args.force_update = False
+    # args.gid = 2
     
     args.test = True
-    args.clean = False 
+    args.clean = True 
     args.model = 'mcl'
     
     
     task = Task(args)
-    # task.tuning()
+    task.tuning()
     task.conduct(force_update=args.force_update)
             
     

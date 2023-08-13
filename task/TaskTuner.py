@@ -184,7 +184,7 @@ class HyperTuner(Opt):
         
         # ray.init(num_cpus=self.tuner.num_cpus)
         ray.init()
-        sched = ASHAScheduler(time_attr='training_iteration', max_t=self.tuner.training_iteration, grace_period= 50) if self.using_sched else None
+        sched = ASHAScheduler(time_attr='training_iteration', max_t=self.tuner.training_iteration, grace_period= 20) if self.using_sched else None
         # self.tuner.num_samples = 80
         tuner = tune.Tuner(
             tune.with_resources(
