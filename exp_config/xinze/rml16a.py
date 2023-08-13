@@ -104,9 +104,11 @@ class mcl(mcldnn_base):
     def task_modify(self):
         # self.hyper.batch_size = 64
         self.hyper.epochs = 200
+        self.hyper.patience = 20
         # self.hyper.gamma = 0.5502
         # self.hyper.lr = 0.0015
         self.hyper.milestone_step = 2
+        self.hyper.pretraining_file =''
 
         self.tuner.num_samples = 40
         self.tuner.training_iteration = self.hyper.epochs
@@ -123,10 +125,10 @@ class mcl(mcldnn_base):
         }]
         
         # self.tuner.using_sched = False
-        self.tuning.lr = tune.loguniform(1e-4, 1e-2)
+        self.tuning.lr = tune.loguniform(1e-4, 2e-3)
         self.tuning.gamma = tune.uniform(0.5,0.99)
-        self.tuning.milestone_step = tune.qrandint(2,10,1)
-        self.tuning.batch_size = tune.choice([64, 128, 192, 256, 320, 400])
+        self.tuning.milestone_step = tune.qrandint(1,10,1)
+        self.tuning.batch_size = tune.choice([64, 192, 256, 400])
         
 
 if __name__ == "__main__":
@@ -136,9 +138,9 @@ if __name__ == "__main__":
     args.exp_config = os.path.dirname(sys.argv[0]).replace(os.getcwd()+'/', '')
     args.exp_file = os.path.splitext(os.path.basename(sys.argv[0]))[0]
     # args.exp_name = 'icassp23'
-    args.exp_name = 'mcl.m2'
+    args.exp_name = 'mcl.rerun'
     args.force_update = True
-    args.gid = 0
+    args.gid = 2
     
     args.test = True
     args.clean = False 

@@ -120,7 +120,11 @@ class MCLDNN_Trainer(Trainer):
 
     def adjust_lr(self):
         if self.early_stopping.counter >= self.cfg.milestone_step:
-            self.adjust_learning_rate(self.optimizer, self.cfg.gamma)
+            history_lr = self.optimizer.param_groups[0]['lr']
+            self.adjust_learning_rate(self.optimizer, self.cfg.gamma)                  
+            current_lr = self.optimizer.param_groups[0]['lr']
+            self.logger.info(
+                f'Learning rate decreased ({history_lr:.3E} --> {current_lr:.3E}).')
 
 if __name__ == '__main__':
     model = MCLDNN(11)
