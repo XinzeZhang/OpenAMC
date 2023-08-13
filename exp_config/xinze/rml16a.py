@@ -108,7 +108,7 @@ class mcl(mcldnn_base):
         # self.hyper.gamma = 0.5502
         # self.hyper.lr = 0.0015
         self.hyper.milestone_step = 2
-        self.hyper.pretraining_file =''
+        self.hyper.pretraining_file ='exp_tempTest/RML2016.10a/mcl.0813/fit/mcl/tuner/tpe/TuningCell_668262ef_22_batch_size=192,gamma=0.6983,lr=0.0007,milestone_step=8_2023-08-13_22-57-17/checkpoint_000017/model.pth'
 
         self.tuner.num_samples = 40
         self.tuner.training_iteration = self.hyper.epochs
@@ -139,11 +139,11 @@ if __name__ == "__main__":
     args.exp_file = os.path.splitext(os.path.basename(sys.argv[0]))[0]
     # args.exp_name = 'icassp23'
     args.exp_name = 'mcl.0813'
-    args.force_update = False
+    args.force_update = True
     # args.gid = 2
     
     args.test = True
-    args.clean = True 
+    args.clean = False 
     args.model = 'mcl'
     
     

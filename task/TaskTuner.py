@@ -57,7 +57,7 @@ class HyperTuner(Opt):
         # self.train_data = subPack.train_set
         # self.valid_data = subPack.val_set
         
-        self.metric = 'val_acc'
+        self.metric = 'best_val_acc'
         if 'num_samples' not in self.tuner.dict:
             self.tuner.num_samples = 20
             if self.algo_name == 'grid':
@@ -103,7 +103,7 @@ class HyperTuner(Opt):
             self.tuner.name = 'TPE_Search'
             self.algo_func =  ConcurrencyLimiter(
             OptunaSearch(
-                metric=self.metric, mode='min',points_to_evaluate=self.points_to_evaluate
+                metric=self.metric, mode='max',points_to_evaluate=self.points_to_evaluate
                 ), 
             max_concurrent=6
             )
@@ -159,8 +159,10 @@ class HyperTuner(Opt):
             if os.path.exists(results_pkl):
                 try:
                     analysis = ExperimentAnalysis(tuner_algo_dir)
-                    best_config = analysis.get_best_config(metric='val_acc', mode='max')
-                    best_checkpoint = analysis.get_best_checkpoint(analysis.get_best_logdir(metric='val_acc', mode='max'), metric='val_acc', mode='max')
+                    best_config = analysis.get_best_config(metric='val_acc', mode='max', scope='all')
+                    # best_checkpoint = analysis.get_best_checkpoint(analysis.get_best_logdir(metric='val_acc', mode='max', scope = 'all'), metric='val_acc', mode='max')
+                    best_trail = analysis.get_best_trial(metric='val_acc', mode='max', scope='all')
+                    best_checkpoint = analysis.get_best_checkpoint(best_trail, metric='val_acc', mode='max')
                     self.best_checkpoint_path = os.path.join(best_checkpoint.path, 'model.pth')
                     
                     self.best_config  = best_config
@@ -197,7 +199,7 @@ class HyperTuner(Opt):
             # name=self.algo_name,
             search_alg=self.algo_func,
             # resources_per_trial=self.resource,
-            metric=self.metric,
+            metric='best_val_acc',
             mode="max",
             num_samples=self.tuner.num_samples,
             scheduler=sched,
@@ -213,7 +215,7 @@ class HyperTuner(Opt):
                       'stop_counter': self.hyper.patience},
                 checkpoint_config=CheckpointConfig(
                     num_to_keep=3,
-                    checkpoint_score_attribute =self.metric,
+                    checkpoint_score_attribute ='val_acc',
                     checkpoint_score_order='max',
                     checkpoint_frequency= 1
                 )      
@@ -228,7 +230,7 @@ class HyperTuner(Opt):
         df.to_csv(os.path.join(self.tuner.dir, '{}.trial.csv'.format(self.algo_name)))
         ray.shutdown()
         
-        best_result = results.get_best_result(self.metric, 'max')
+        best_result = results.get_best_result(self.metric, 'max', scope='all')
         self.best_config.merge(best_result.config)
         self.best_result = best_result.metrics
         self.best_checkpoint_path = os.path.join(best_result.checkpoint.path, 'model.pth')
@@ -318,10 +320,13 @@ class TuningCell(tune.Trainable):
         self.trainer.after_val_step(checkpoint = False)
         self.trainer.iter += 1      
         
+        best_acc =  self.trainer.best_monitor
+        
         return {
             'tra_acc': t_acc,
             'val_acc': v_acc,
-            'stop_counter': self.trainer.early_stopping.counter 
+            'best_val_acc': best_acc, 
+            'stop_counter': self.trainer.early_stopping.counter,
         }
     
     def save_checkpoint(self, tmp_checkpoint_dir):

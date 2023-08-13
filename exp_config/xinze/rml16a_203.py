@@ -111,8 +111,9 @@ class mcl2(mcldnn_base):
         self.hyper.batch_size = 64
         self.hyper.T_mult = 2
         self.hyper.T_0 = 1
+
         
-        self.tuner.num_samples = 20
+        self.tuner.num_samples = 40
         self.tuner.training_iteration = self.hyper.epochs
         # self.tuner.num_cpus = 32 
         self.tuner.resource = {
@@ -122,6 +123,8 @@ class mcl2(mcldnn_base):
         # self.tuner.points_to_evaluate=[]
         
         # self.tuner.using_sched = False
+        self.tuning.dict.pop('gamma')
+        self.tuning.dict.pop('milestone_step')
         self.tuning.lr = tune.loguniform(1e-4, 1e-2)
         self.tuning.T_mult = tune.qrandint(1,3,1)
         self.tuning.T_0 = tune.qrandint(1,10,1)
@@ -140,12 +143,12 @@ if __name__ == "__main__":
     
     args.test = True
     args.clean = True
-    args.model = 'mcl'
+    args.model = 'mcl2'
     
     
     task = Task(args)
     task.tuning()
-    task.conduct(force_update=True)
+    task.conduct()
     # task.conduct()
             
     
