@@ -102,7 +102,11 @@ class dualnet(dualnet_base):
 
 class mcl(mcldnn_base):
     def task_modify(self):
-        self.hyper.epochs = 100
+        # self.hyper.batch_size = 64
+        self.hyper.epochs = 200
+        # self.hyper.gamma = 0.5502
+        # self.hyper.lr = 0.0015
+        self.hyper.milestone_step = 2
 
         self.tuner.num_samples = 40
         self.tuner.training_iteration = self.hyper.epochs
@@ -132,16 +136,17 @@ if __name__ == "__main__":
     args.exp_config = os.path.dirname(sys.argv[0]).replace(os.getcwd()+'/', '')
     args.exp_file = os.path.splitext(os.path.basename(sys.argv[0]))[0]
     # args.exp_name = 'icassp23'
-    args.exp_name = 'tuning.mcl'
-    # args.gid = 0
+    args.exp_name = 'mcl.m2'
+    args.force_update = True
+    args.gid = 0
     
     args.test = True
-    args.clean = True
+    args.clean = False 
     args.model = 'mcl'
     
     
     task = Task(args)
-    task.tuning()
-    task.conduct()
+    # task.tuning()
+    task.conduct(force_update=args.force_update)
             
     

@@ -39,6 +39,19 @@ class BaseNet(nn.Module):
         # x = x / x.norm(p=2, dim=-1, keepdim=True)
         return x
 
+    def load_pretraing_file(self, file_path = None, tag = 'pretraining'):
+        try:
+            device_id = next(self.parameters()).get_device()
+            
+            model_state = torch.load(file_path, map_location = f'cuda:{device_id}') if device_id > -1 else torch.load(file_path)
+            
+            self.load_state_dict(model_state)
+            self.logger.info(f'Successfully loading the {tag} file!')
+        except:
+            self.logger.exception(
+                    '{}\nGot an error on loading the {} file in the location: {}.\n{}'.format('!'*50, tag, file_path, '!'*50))
+            raise SystemExit()
+
     def xfit(self, train_loader, val_loader):
         """
         If self.hyper has pretraining_file, then directly loading the pretraining states;\n
@@ -49,26 +62,17 @@ class BaseNet(nn.Module):
         pretraining_tag = False
         fit_info = None
         if 'pretraining_file' in self.hyper.dict and self.hyper.pretraining_file is not None and os.path.exists(self.hyper.pretraining_file):
-            try:
-                self.logger.info(f'Finding pretraining file in the location {self.hyper.pretraining_file}')
-                
-                device_id = next(self.parameters()).get_device()
-                
-                
-                model_state = torch.load(self.hyper.pretraining_file, map_location = f'cuda:{device_id}') if device_id > -1 else torch.load(self.hyper.pretraining_file)
-                
-                self.load_state_dict(model_state)
-
-                self.logger.info('Successfully loading the pretraining file!')
-                pretraining_tag = True
-            except:
-                self.logger.exception(
-                    '{}\nGot an error on loading pretraining_file in the location: {}.\n{}'.format('!'*50, self.hyper.pretraining_file, '!'*50))
-                raise SystemExit()
+            
+            self.logger.info(f'Finding pretraining file in the location {self.hyper.pretraining_file}')
+            self.load_pretraing_file(file_path=self.hyper.pretraining_file)
+            pretraining_tag = True
         
         if pretraining_tag is False:
             fit_info = self._xfit(train_loader, val_loader)
             
+            checkpoint_file = os.path.join(self.hyper.model_fit_dir, 'checkpoint', self.hyper.data_name + '_' + f'{self.hyper.model_name}' + '.best.pt')
+            
+            self.load_pretraing_file(file_path=checkpoint_file, tag='checkpoint') 
         
         return fit_info
 
@@ -76,6 +80,7 @@ class BaseNet(nn.Module):
         net_trainer = Trainer(self, train_loader, val_loader, self.hyper, self.logger)
         net_trainer.loop()
         fit_info = net_trainer.epochs_stats
+        
         return fit_info
 
     def predict(self, sample):

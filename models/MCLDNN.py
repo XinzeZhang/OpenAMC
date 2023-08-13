@@ -59,12 +59,15 @@ class MCLDNN(BaseNet):
 
         # afer conv4(batch, 80, 1, 6)
         # reshape(batch, 80, 6)
-        self.lstm1 = nn.Sequential(
-            nn.LSTM(input_size= 100, hidden_size= 128, num_layers= 1, batch_first= True)
-        )
-        self.lstm2 = nn.Sequential(
-            nn.LSTM(input_size= 128, hidden_size= 128, num_layers= 1, batch_first= True)
-        )
+        # self.lstm1 = nn.Sequential(
+        #     nn.LSTM(input_size= 100, hidden_size= 128, num_layers= 1, batch_first= True)
+        # )
+        # self.lstm2 = nn.Sequential(
+        #     nn.LSTM(input_size= 128, hidden_size= 128, num_layers= 1, batch_first= True)
+        # )
+        self.lstm1 = nn.LSTM(input_size= 100, hidden_size= 128, num_layers= 1, batch_first= True)
+        self.lstm2 = nn.LSTM(input_size= 128, hidden_size= 128, num_layers= 1, batch_first= True)
+        
         self.fc1 = nn.Sequential(
             nn.Linear(in_features= 128, out_features= 128),
             nn.SELU(),
@@ -115,37 +118,9 @@ class MCLDNN_Trainer(Trainer):
     def __init__(self, model,train_loader,val_loader, cfg, logger):
         super().__init__(model,train_loader,val_loader,cfg,logger)
 
-    def after_val_step(self, checkpoint = True):
-        if self.val_acc.avg >= self.best_monitor:
-            self.best_monitor = self.val_acc.avg
-            self.best_epoch = self.iter
-            # toDo: change to annother location.
-            if checkpoint:
-                best_model_name = self.cfg.data_name + '_' + \
-                    f'{self.cfg.model_name}' + '.best.pt'
-                torch.save(self.model.state_dict(), os.path.join(
-                    self.checkpoint_folder, best_model_name))
-                
-        self.logger.info(
-            '====> Epoch: {} Time: {:.2f} Val Loss: {:.6E} Val Acc: {:.3f}%'.format(self.iter, time.time() - self.t_s, self.val_loss.avg, self.val_acc.avg * 100))
-        self.logger.info('Best Epoch: {} \t Best Val Acc: {:.3f}%'.format(self.best_epoch, self.best_monitor * 100 ))
-
-        self.early_stopping(self.val_loss.avg)
-
+    def adjust_lr(self):
         if self.early_stopping.counter >= self.cfg.milestone_step:
             self.adjust_learning_rate(self.optimizer, self.cfg.gamma)
-
-        self.val_loss_list.append(self.val_loss.avg)
-        self.val_acc_list.append(self.val_acc.avg)
-
-        self.epochs_stats = pd.DataFrame(
-            data={"epoch": range(self.iter + 1),
-                  "lr_list": self.lr_list,
-                  "train_loss": self.train_loss_list,
-                  "val_loss": self.val_loss_list,
-                  "train_acc": self.train_acc_list,
-                  "val_acc": self.val_acc_list}
-        )
 
 if __name__ == '__main__':
     model = MCLDNN(11)

@@ -74,6 +74,7 @@ class Task(Opt):
         cuda_exist = torch.cuda.is_available()
         if cuda_exist and args.cuda:
             self.model_opts.hyper.device = torch.device('cuda:{}'.format(args.gid))
+            torch.cuda.set_device(args.gid)
         else:
             self.model_opts.hyper.device = torch.device('cpu')
 
@@ -208,6 +209,7 @@ class Task(Opt):
 
             train_loader, val_loader = self.data_opts.load_fitset(fit_batch_size = cid_hyper.batch_size)
             clogger.critical('Loading training set and validation set.')
+            clogger.info(f'Fit batch size: {train_loader.batch_size}')
             clogger.info(f"Train_loader batch: {len(train_loader)}")
             clogger.info(f"Val_loader batch: {len(val_loader)}")
             clogger.critical('>'*40)
@@ -329,9 +331,9 @@ class Task(Opt):
         kappa = cohen_kappa_score(label_all, pre_lab_all)
         acc = np.mean(Accuracy_list)
         
-        eLogger.info('Overall Accuracy is: {:.3f}%'.format(acc * 100))
-        eLogger.info(f'Macro F1-score is: {F1_score}')
-        eLogger.info(f'Kappa Coefficient is: {kappa}')
+        eLogger.info('Overall Accuracy is: {:.2f}%'.format(acc * 100))
+        eLogger.info(f'Macro F1-score is: {F1_score:.4f}')
+        eLogger.info(f'Kappa Coefficient is: {kappa:.4f}')
         
         if ave_confMax:
             save_confmat(Confmat_Set, self.data_opts.num_snrs, self.data_opts.classes, self.eval_plot_dir)

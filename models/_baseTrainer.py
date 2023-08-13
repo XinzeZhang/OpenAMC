@@ -47,19 +47,19 @@ class EarlyStopping:
         self.counter = 0
         self.best_score = None
         self.early_stop = False
-        self.val_loss_min = np.Inf
+        self.val_acc_max = -np.Inf
         self.delta = delta
         self.logger = logger
 
-    def __call__(self, val_loss):
+    def __call__(self, val_acc):
 
-        score = -val_loss
+        score = val_acc * 100
 
         if self.best_score is None:
             self.best_score = score
             self.logger.info(
-                f'Validation loss decreased ({self.val_loss_min:.6f} --> {val_loss:.6f}).')
-            self.val_loss_min = val_loss
+                f'Validation accuracy increased ({self.val_acc_max:.3f}% --> {score:.3f})%.')
+            self.val_acc_max = score
         elif score < self.best_score + self.delta:
             self.counter += 1
             self.logger.info(
@@ -69,8 +69,8 @@ class EarlyStopping:
         else:
             self.best_score = score
             self.logger.info(
-                f'Validation loss decreased ({self.val_loss_min:.6f} --> {val_loss:.6f}).')
-            self.val_loss_min = val_loss
+                f'Validation accuracy increased ({self.val_acc_max:.3f}% --> {score:.3f})%.')
+            self.val_acc_max = score
             self.counter = 0
 
 
@@ -208,8 +208,8 @@ class Trainer:
 
     def after_train_step(self):
         self.lr_list.append(self.optimizer.param_groups[0]['lr'])
-        self.logger.info('====> Epoch: {} Time: {:.2f} Train Loss: {:.6E} Train Acc: {:.3f}% lr: {:.5f}'.format(
-            self.iter, time.time() - self.t_s, self.train_loss.avg, self.train_acc.avg * 100, self.lr_list[-1]))
+        self.logger.info('====> Epoch: {} Time: {:.2f} lr: {:.4E} Train Loss: {:.6E} Train Acc: {:.3f}% '.format(
+            self.iter, time.time() - self.t_s,  self.lr_list[-1], self.train_loss.avg, self.train_acc.avg * 100))
         self.train_loss_list.append(self.train_loss.avg)
         self.train_acc_list.append(self.train_acc.avg)
         
@@ -254,7 +254,14 @@ class Trainer:
                         pbar.update(1)
 
         return self.val_loss.avg, self.val_acc.avg
-                        
+    
+    def adjust_lr(self):
+        if self.early_stopping.counter != 0 and self.early_stopping.counter % self.cfg.milestone_step == 0:
+            history_lr = self.optimizer.param_groups[0]['lr']
+            self.adjust_learning_rate(self.optimizer, self.cfg.gamma)                  
+            current_lr = self.optimizer.param_groups[0]['lr']
+            self.logger.info(
+                f'Learning rate decreased ({history_lr:.3E} --> {current_lr:.3E}).')
 
     def after_val_step(self, checkpoint = True):
         if self.val_acc.avg >= self.best_monitor:
@@ -269,12 +276,11 @@ class Trainer:
                 
         self.logger.info(
             '====> Epoch: {} Time: {:.2f} Val Loss: {:.6E} Val Acc: {:.3f}%'.format(self.iter, time.time() - self.t_s, self.val_loss.avg, self.val_acc.avg * 100))
+
+        self.early_stopping(self.val_acc.avg)
         self.logger.info('Best Epoch: {} \t Best Val Acc: {:.3f}%'.format(self.best_epoch, self.best_monitor * 100 ))
-
-        self.early_stopping(self.val_loss.avg)
-
-        if self.early_stopping.counter != 0 and self.early_stopping.counter % self.cfg.milestone_step == 0:
-            self.adjust_learning_rate(self.optimizer, self.cfg.gamma)
+        
+        self.adjust_lr()
 
         self.val_loss_list.append(self.val_loss.avg)
         self.val_acc_list.append(self.val_acc.avg)
