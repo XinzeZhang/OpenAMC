@@ -218,12 +218,15 @@ class HyperTuner(Opt):
                 ),
                 sync_config=tune.SyncConfig(
                     syncer=None
-                )                
+                ),
+                log_to_file=True              
             )
         )
         
         results = tuner.fit() 
-            
+        # https://docs.ray.io/en/latest/tune/tutorials/tune-output.html?highlight=tensorboard#where-to-find-log-to-file-files
+        # to see this,  using:  tensorboard --logdir /home/xinze/Documents/Github/OpenAMC/exp_tempTest/RML2016.10a/tuning.mcl/fit/mcl/tuner/tpe --host 192.168.80.XXX
+        
         df = results.get_dataframe()
         df.to_csv(os.path.join(self.tuner.dir, '{}.trial.csv'.format(self.algo_name)))
         ray.shutdown()
