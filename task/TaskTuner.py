@@ -96,16 +96,17 @@ class HyperTuner(Opt):
         
         if self.algo_name == 'bayes':
             self.tuner.name = 'Bayes_Search'
-            self.algo_func = ConcurrencyLimiter(AxSearch(metric=self.metric, mode='max',verbose_logging = False), max_concurrent=6)
+            self.algo_func = ConcurrencyLimiter(AxSearch(
+                # metric=self.metric, mode='max',
+                verbose_logging = False), max_concurrent=6)
             
         elif self.algo_name == 'tpe':
             # Tree-structured Parzen Estimator https://docs.ray.io/en/master/tune/examples/optuna_example.html
             self.tuner.name = 'TPE_Search'
             self.algo_func =  ConcurrencyLimiter(
-            OptunaSearch(
-                metric=self.metric, mode='max',points_to_evaluate=self.points_to_evaluate
+            OptunaSearch(points_to_evaluate=self.points_to_evaluate
                 ), 
-            max_concurrent=6
+            max_concurrent=12
             )
             
         elif self.algo_name == 'pso':
@@ -116,8 +117,8 @@ class HyperTuner(Opt):
             optimizer=ng.optimizers.ConfiguredPSO(
                 popsize= _popsize
                 ),
-            metric=self.metric,
-            mode="max",
+            # metric=self.metric,
+            # mode="max",
             points_to_evaluate=self.points_to_evaluate
             )
         elif self.algo_name == 'rand' or self.algo_name == 'grid':
@@ -325,7 +326,7 @@ class TuningCell(tune.Trainable):
         return {
             'tra_acc': t_acc,
             'val_acc': v_acc,
-            'best_val_acc': best_acc, 
+            'best_val_acc': best_acc * 100, 
             'stop_counter': self.trainer.early_stopping.counter,
         }
     

@@ -113,11 +113,11 @@ class mcl2(mcldnn_base):
         self.hyper.T_0 = 1
 
         
-        self.tuner.num_samples = 40
+        self.tuner.num_samples = 50
         self.tuner.training_iteration = self.hyper.epochs
         # self.tuner.num_cpus = 32 
         self.tuner.resource = {
-            "gpu": 0.5 # set this for GPUs
+            "gpu": 0.25 # set this for GPUs
         }
         
         # self.tuner.points_to_evaluate=[]
