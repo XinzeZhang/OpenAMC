@@ -96,7 +96,7 @@ class HyperTuner(Opt):
         
         if self.algo_name == 'bayes':
             self.tuner.name = 'Bayes_Search'
-            self.algo_func = ConcurrencyLimiter(AxSearch(metric=self.metric, mode='min',verbose_logging = False), max_concurrent=6)
+            self.algo_func = ConcurrencyLimiter(AxSearch(metric=self.metric, mode='max',verbose_logging = False), max_concurrent=6)
             
         elif self.algo_name == 'tpe':
             # Tree-structured Parzen Estimator https://docs.ray.io/en/master/tune/examples/optuna_example.html
@@ -117,7 +117,7 @@ class HyperTuner(Opt):
                 popsize= _popsize
                 ),
             metric=self.metric,
-            mode="min",
+            mode="max",
             points_to_evaluate=self.points_to_evaluate
             )
         elif self.algo_name == 'rand' or self.algo_name == 'grid':
