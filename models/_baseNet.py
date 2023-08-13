@@ -46,7 +46,7 @@ class BaseNet(nn.Module):
             model_state = torch.load(file_path, map_location = f'cuda:{device_id}') if device_id > -1 else torch.load(file_path)
             
             self.load_state_dict(model_state)
-            self.logger.info(f'Successfully loading the {tag} file!')
+            self.logger.info(f'Successfully loading the {tag} file in the location: {file_path}!')
         except:
             self.logger.exception(
                     '{}\nGot an error on loading the {} file in the location: {}.\n{}'.format('!'*50, tag, file_path, '!'*50))
