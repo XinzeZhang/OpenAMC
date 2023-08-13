@@ -126,7 +126,7 @@ class mcldnn_base(nn_base):
         
     def hyper_modify(self):
         self.hyper.batch_size = 400
-        self.hyper.patience = 60
+        self.hyper.patience = 20
         self.hyper.milestone_step = 5
         self.hyper.gamma = 0.8
         

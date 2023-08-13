@@ -183,6 +183,7 @@ class HyperTuner(Opt):
         func_data.merge(self.subPack, ['train_set', 'val_set'])
         
         # ray.init(num_cpus=self.tuner.num_cpus)
+        os.environ['RAY_COLOR_PREFIX'] = '1'
         ray.init()
         sched = ASHAScheduler(time_attr='training_iteration', max_t=self.tuner.training_iteration, grace_period= 20) if self.using_sched else None
         # self.tuner.num_samples = 80
@@ -215,11 +216,7 @@ class HyperTuner(Opt):
                     checkpoint_score_attribute =self.metric,
                     checkpoint_score_order='max',
                     checkpoint_frequency= 1
-                ),
-                sync_config=tune.SyncConfig(
-                    syncer=None
-                ),
-                log_to_file=True              
+                )      
             )
         )
         

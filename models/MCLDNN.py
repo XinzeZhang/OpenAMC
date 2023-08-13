@@ -5,10 +5,12 @@ import torch.nn.functional as F
 # from model.base_model import BaseModel
 from models._baseNet import BaseNet
 import os
-from models._baseTrainer import Trainer
+from models._baseTrainer import Trainer, EarlyStopping
 import time
 import pandas as pd
-
+from torch import optim, nn
+from tqdm import tqdm as real_tqdm
+from ray.experimental.tqdm_ray import tqdm as ray_tqdm
 class CausalConv1d(nn.Module):
     '''Refer to https://discuss.pytorch.org/t/causal-convolution/3456/11'''
     def __init__(self, in_channels, out_channels, kernel_size, dilation=1, **kwargs):
@@ -109,7 +111,7 @@ class MCLDNN(BaseNet):
         return out 
     
     def _xfit(self, train_loader, val_loader):
-        net_trainer = MCLDNN_Trainer(self, train_loader, val_loader, self.hyper, self.logger)
+        net_trainer = MCLDNN_Trainer2(self, train_loader, val_loader, self.hyper, self.logger)
         net_trainer.loop()
         fit_info = net_trainer.epochs_stats
         return fit_info    
@@ -125,6 +127,68 @@ class MCLDNN_Trainer(Trainer):
             current_lr = self.optimizer.param_groups[0]['lr']
             self.logger.info(
                 f'Learning rate decreased ({history_lr:.3E} --> {current_lr:.3E}).')
+            
+class MCLDNN_Trainer2(Trainer):
+    def __init__(self, model,train_loader,val_loader, cfg, logger):
+        super().__init__(model,train_loader,val_loader,cfg,logger)
+        
+    def before_train(self):
+        self.optimizer = optim.Adam(self.model.parameters(), lr=self.cfg.lr)
+        self.criterion = nn.CrossEntropyLoss().to(self.cfg.device)
+        self.early_stopping = EarlyStopping(
+            self.logger, patience=self.cfg.patience)
+        
+        T_0 = 1 if 'T_0' not in self.cfg.dict else self.cfg.T_0
+        T_mult = 2 if 'T_mult' not in self.cfg.dict else self.cfg.T_mult
+        
+        self.scheduler = optim.lr_scheduler.CosineAnnealingWarmRestarts(self.optimizer, T_0= T_0, T_mult=T_mult)
+
+        self.lr_list = []
+        self.best_monitor = 0.0
+        self.best_epoch = 0
+        self.train_loss_list = []
+        self.train_acc_list = []
+        self.val_loss_list = []
+        self.val_acc_list = []
+    
+    def run_optim_step(self, i, sig_batch, lab_batch):
+        sig_batch = sig_batch.to(self.cfg.device)
+        lab_batch = lab_batch.to(self.cfg.device)
+        loss, acc = self.cal_loss_acc(sig_batch, lab_batch)
+        self.optimizer.zero_grad()
+        loss.backward()
+        self.optimizer.step()
+        self.scheduler.step(self.iter-1 + i / len(self.train_loader))
+
+        self.train_loss.update(loss.item())
+        self.train_acc.update(acc)
+    
+    def run_train_step(self, ray = False):
+        
+        if ray:
+            for step, (sig_batch, lab_batch) in ray_tqdm(enumerate(self.train_loader),  total=len(self.train_loader)):
+                self.run_optim_step(step, sig_batch, lab_batch)
+        else:
+            # pass
+            with real_tqdm(total=len(self.train_loader),
+                    desc=f'Epoch{self.iter}/{self.cfg.epochs}',
+                    postfix=dict,
+                    mininterval=0.3) as pbar:
+                for step, (sig_batch, lab_batch) in enumerate(self.train_loader):
+                    self.run_optim_step(step, sig_batch, lab_batch)
+
+                    pbar.set_postfix(**{'train_loss': self.train_loss.avg,
+                                        'train_acc': self.train_acc.avg})
+                    pbar.update(1)
+                
+        return self.train_loss.avg, self.train_acc.avg
+        
+    def adjust_lr(self):
+        # history_lr = self.optimizer.param_groups[0]['lr']
+        # self.scheduler.step()      
+        current_lr = self.optimizer.param_groups[0]['lr']
+        self.logger.info(
+            f'Learning rate: ({current_lr:.3E}).')
 
 if __name__ == '__main__':
     model = MCLDNN(11)

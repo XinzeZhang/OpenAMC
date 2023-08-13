@@ -78,9 +78,9 @@ class awn(AWN_base):
         # self.hyper.pretraining_file =         'exp_results/RML2016.10a/ICASSP23/fit/awn/tuner/tpe/TuningCell_743b4993_8_gamma=0.6784,lr=0.0004,milestone_step=5_2023-08-09_03-35-19/checkpoint_000054/model.pth'
         # self.hyper.pretraining_file = 'exp_tempTest/RML2016.10a/ICASSP23/fit/awn/tuner/tpe/TuningCell_3fbd2ccb_1_gamma=0.5241,lr=0.0003,milestone_step=21_2023-08-13_14-58-50/checkpoint_000028/model.pth'
         
-        self.tuner.num_samples = 2
+        self.tuner.num_samples = 4
         self.tuner.resource = {
-            "gpu": 0.5  # set this for GPUs
+            "gpu": 0.25  # set this for GPUs
         }
     
 
@@ -92,7 +92,7 @@ class vtcnn(vtcnn2_base):
         self.hyper.gamma = 0.5
         
         self.tuner.resource = {
-            "gpu": 0.5  # set this for GPUs
+            "gpu": 0.25  # set this for GPUs
         }
 
 class dualnet(dualnet_base):
@@ -101,30 +101,31 @@ class dualnet(dualnet_base):
         self.hyper.patience = 15
         self.hyper.pretraining_file = 'data/RML2016.10a/pretrain_models/RML2016.10a_dualnet.best.pt'
 
-class mcl(mcldnn_base):
+class mcl2(mcldnn_base):
     def task_modify(self):
+        self.trainer_module = (self.import_path, 'MCLDNN_Trainer2')
+        
         self.hyper.epochs = 100
-        self.hyper.pretraining_file = 'exp_results/RML2016.10a/ICASSP23/fit/mcl/tuner/tpe/TuningCell_7eaf3e7e_10_batch_size=128,gamma=0.9193,lr=0.0001,milestone_step=10_2023-08-13_02-14-55/checkpoint_000020/model.pth'
-
+        self.hyper.pretraining_file = ''
+        self.hyper.patience = 20
+        self.hyper.batch_size = 64
+        self.hyper.T_mult = 2
+        self.hyper.T_0 = 1
+        
         self.tuner.num_samples = 20
         self.tuner.training_iteration = self.hyper.epochs
         # self.tuner.num_cpus = 32 
         self.tuner.resource = {
-            "gpu": 0.5  # set this for GPUs
+            "gpu": 0.5 # set this for GPUs
         }
         
-        self.tuner.points_to_evaluate=[{
-            'lr':0.001,
-            'gamma':0.8,
-            'milestone_step':5,
-            'batch_size': 64
-        }]
+        # self.tuner.points_to_evaluate=[]
         
         # self.tuner.using_sched = False
         self.tuning.lr = tune.loguniform(1e-4, 1e-2)
-        self.tuning.gamma = tune.uniform(0.5,0.99)
-        self.tuning.milestone_step = tune.qrandint(2,10,1)
-        self.tuning.batch_size = tune.choice([64, 128])
+        self.tuning.T_mult = tune.qrandint(1,3,1)
+        self.tuning.T_0 = tune.qrandint(1,10,1)
+
         
 
 if __name__ == "__main__":
@@ -138,8 +139,8 @@ if __name__ == "__main__":
     # args.gid = 0
     
     args.test = True
-    # args.clean = True
-    args.model = 'awn'
+    args.clean = True
+    args.model = 'mcl'
     
     
     task = Task(args)
