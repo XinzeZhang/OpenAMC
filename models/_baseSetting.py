@@ -146,3 +146,8 @@ class dualnet_base(nn_base):
     def base_modify(self):
         self.import_path = 'models/Dual_Net.py'
         self.class_name = 'DualNet'
+        
+class resnet_base(nn_base):
+    def base_modify(self):
+        self.import_path = 'models/ResNet.py'
+        self.class_name = 'Subsampling_ResNet'

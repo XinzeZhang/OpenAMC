@@ -103,6 +103,7 @@ class Task(Opt):
         else:
             self.logger_level = 20  # equal to info
 
+        self.force_update = args.force_update
         # self.rep_times = args.rep_times
 
         # self.cid_list = args.cid
@@ -153,13 +154,18 @@ class Task(Opt):
         self.data_statue = True
         
     
-    def conduct(self, force_update = False):
+    def conduct(self, force_update = None):
         # os_makedirs(self.model_fit_dir)        
         # for i in tqdm(self.cid_list):
-        if force_update or not os.path.exists(self.model_result_file):
-            if force_update:
+        if force_update is not None:
+            if force_update in [True, False]:
+                self.force_update = force_update
+            else:
+                raise ValueError('force_update parameter is incorrect, please set with True or False.')
+        
+        if not os.path.exists(self.model_result_file) or self.force_update:
+            if os.path.exists(self.model_result_file):
                 os_rmdirs(self.model_pred_dir)
-            
             os_makedirs(self.model_pred_dir)
         
             task_logger= self.logger_config(

@@ -28,6 +28,8 @@ def get_parser(parsing = True):
 
     # -----------------------------------------------------------------------------------
     # experimental log parameters
+    parser.add_argument('-force_update', default=False,action='store_true',
+                        help='Whether to force execute the conduct function.')
     parser.add_argument('-test', default=False,action='store_true',
                         help='Whether to use unitTest mode')
     parser.add_argument('-clean', default=False, action='store_true',

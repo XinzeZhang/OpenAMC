@@ -208,7 +208,7 @@ class Trainer:
 
     def after_train_step(self):
         self.lr_list.append(self.optimizer.param_groups[0]['lr'])
-        self.logger.info('====> Epoch: {} Time: {:.2f} lr: {:.4E} Train Loss: {:.6E} Train Acc: {:.3f}% '.format(
+        self.logger.info('====> Epoch: {} Time: {:.2f}\tlr: {:.4E}\tTrain Loss: {:.6E}\tTrain Acc: {:.3f}% '.format(
             self.iter, time.time() - self.t_s,  self.lr_list[-1], self.train_loss.avg, self.train_acc.avg * 100))
         self.train_loss_list.append(self.train_loss.avg)
         self.train_acc_list.append(self.train_acc.avg)
@@ -275,7 +275,7 @@ class Trainer:
                     self.checkpoint_folder, best_model_name))
                 
         self.logger.info(
-            '====> Epoch: {} Time: {:.2f} Val Loss: {:.6E} Val Acc: {:.3f}%'.format(self.iter, time.time() - self.t_s, self.val_loss.avg, self.val_acc.avg * 100))
+            '====> Epoch: {} Time: {:.2f}\tVal Loss: {:.6E}\tVal Acc: {:.3f}%'.format(self.iter, time.time() - self.t_s, self.val_loss.avg, self.val_acc.avg * 100))
 
         self.early_stopping(self.val_acc.avg)
         self.logger.info('Best Epoch: {} \t Best Val Acc: {:.3f}%'.format(self.best_epoch, self.best_monitor * 100 ))

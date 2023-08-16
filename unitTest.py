@@ -62,3 +62,16 @@ os.cpu_count()
 a= 0.1156
 print(f'{a:.3f}')
 # %%
+import tensorflow as tf
+from tensorflow.python.keras.layers import MaxPooling1D
+
+x = tf.constant([x * 0.1 for x in range(128)])
+x = tf.reshape(x, [1, 1, 128])
+
+max_pool_1d = MaxPooling1D(data_format='channels_first')
+y = max_pool_1d(x)
+print(y)
+# %%
+print(x)
+max_pool_1d(x)
+# %%

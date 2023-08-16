@@ -11,7 +11,7 @@ import torch
 
 from ray import tune
 
-from models._baseSetting import AMC_Net_base, AWN_base, mcldnn_base, vtcnn2_base, dualnet_base
+from models._baseSetting import AMC_Net_base, AWN_base, mcldnn_base, vtcnn2_base, dualnet_base, resnet_base
 
 class Data(TaskDataset):
     def __init__(self, opts):
@@ -116,39 +116,43 @@ class mcl(mcldnn_base):
         self.tuner.resource = {
             "gpu": 0.5  # set this for GPUs
         }
-        
         # self.tuner.points_to_evaluate=[{
         #     'lr':0.001,
         #     'gamma':0.8,
         #     'milestone_step':5,
         #     'batch_size': 400
         # }]
-        
         # self.tuner.using_sched = False
         self.tuning.lr = tune.loguniform(1e-4, 2e-3)
         self.tuning.gamma = tune.uniform(0.5,0.99)
         self.tuning.milestone_step = tune.qrandint(1,10,1)
         self.tuning.batch_size = tune.choice([64, 96, 128, 160, 192])
         
+# resnet_base
+class res(resnet_base):
+    def task_modify(self):
+        self.hyper.epochs = 100
+        self.hyper.batch_size = 1024
+        self.hyper.milestone_step = 1
 
 if __name__ == "__main__":
     args = get_parser()
     args.cuda = True
+    # args.gid = 2
     
     args.exp_config = os.path.dirname(sys.argv[0]).replace(os.getcwd()+'/', '')
     args.exp_file = os.path.splitext(os.path.basename(sys.argv[0]))[0]
-    # args.exp_name = 'icassp23'
-    args.exp_name = 'mcl.0813'
-    args.force_update = True
-    # args.gid = 2
+    args.exp_name = 'icassp23'
+    args.exp_name = 'res.0817'
+    # args.force_update = True # if need to rerun the model fiting or reload the pretraining_file (if os.path.exit(hyper.pretraining_file) to get the results, uncomment this line.)
     
-    args.test = True
+    # args.test = True
     args.clean = False 
-    args.model = 'mcl'
+    args.model = 'res'
     
     
     task = Task(args)
-    task.tuning()
-    task.conduct(force_update=args.force_update)
+    # task.tuning()
+    task.conduct( )
             
     
