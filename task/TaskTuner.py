@@ -66,8 +66,11 @@ class HyperTuner(Opt):
         if 'num_cpus' not in self.tuner.dict:
             self.tuner.num_cpus = 30
         
-        if 'training_iteration' not in self.tuner.dict:
-            self.tuner.training_iteration = 100
+        if 'max_training_iteration' not in self.tuner.dict:
+            self.tuner.max_training_iteration = 100
+        
+        if 'min_training_iteration' not in self.tuner.dict:
+            self.tuner.min_training_iteration = 20
         
         self.using_sched = True
         if 'using_sched' in self.tuner.dict and self.tuner.using_sched is False:
@@ -188,7 +191,7 @@ class HyperTuner(Opt):
         # ray.init(num_cpus=self.tuner.num_cpus)
         os.environ['RAY_COLOR_PREFIX'] = '1'
         ray.init()
-        sched = ASHAScheduler(time_attr='training_iteration', max_t=self.tuner.training_iteration, grace_period= 20) if self.using_sched else None
+        sched = ASHAScheduler(time_attr='training_iteration', max_t=self.tuner.max_training_iteration, grace_period= self.tuner.min_training_iteration) if self.using_sched else None
         # self.tuner.num_samples = 80
         tuner = tune.Tuner(
             tune.with_resources(
@@ -197,13 +200,13 @@ class HyperTuner(Opt):
             param_space=self.tuning.dict,
             tune_config=
             tune.TuneConfig(
-            # name=self.algo_name,
             search_alg=self.algo_func,
-            # resources_per_trial=self.resource,
             metric='best_val_acc',
             mode="max",
             num_samples=self.tuner.num_samples,
             scheduler=sched,
+            # name=self.algo_name,
+            # resources_per_trial=self.resource,
             # verbose=1,
             # raise_on_failed_trial = False
             ),
@@ -212,7 +215,7 @@ class HyperTuner(Opt):
                 storage_path=self.tuner.dir,
                 verbose=1,
                 failure_config=FailureConfig(max_failures=self.tuner.num_samples // 2),
-                stop={'training_iteration':self.tuner.training_iteration,
+                stop={'training_iteration':self.tuner.max_training_iteration,
                       'stop_counter': self.hyper.patience},
                 checkpoint_config=CheckpointConfig(
                     num_to_keep=3,

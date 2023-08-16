@@ -72,7 +72,8 @@ class tuner(Opt):
         } # Parallel nums = min(num_cpus // cpu, num_gpus // gpu), where num_gpus = torch.cuda.device_count(), which means this setting only affects to the worker scheduler of the ray tuner, and the cpus settings does not affect the system resources the runing worker utilizes.
         
         self.num_samples = 20 # tuner num trails
-        self.training_iteration = 100 # max fitness epochs per trail
+        self.max_training_iteration = 100 # max fitness epochs per trail
+        self.min_training_iteration = 20
         self.algo = 'tpe'
         self.num_cpus = os.cpu_count()
         self.statue = False
