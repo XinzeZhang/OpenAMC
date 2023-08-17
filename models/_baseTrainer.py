@@ -185,7 +185,7 @@ class Trainer:
         else:
             # pass
             with real_tqdm(total=len(self.train_loader),
-                    desc=f'Epoch{self.iter}/{self.cfg.epochs}',
+                    desc=f'Epoch {self.iter}/{self.cfg.epochs}',
                     postfix=dict,
                     mininterval=0.3) as pbar:
                 for step, (sig_batch, lab_batch) in enumerate(self.train_loader):
@@ -235,7 +235,7 @@ class Trainer:
                     self.val_acc.update(acc)
         else:
             with real_tqdm(total=len(self.val_loader),
-                    desc=f'Epoch{self.iter}/{self.cfg.epochs}',
+                    desc=f'Epoch {self.iter}/{self.cfg.epochs}',
                     postfix=dict,
                     mininterval=0.3,
                     colour='blue') as pbar:
