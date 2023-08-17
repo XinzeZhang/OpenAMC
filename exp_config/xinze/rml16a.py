@@ -135,7 +135,8 @@ class res(resnet_base):
         self.hyper.batch_size = 1024
         self.hyper.milestone_step = 1
         self.hyper.patience = 20
-        self.hyper.pretraining_file = 'data/RML2016.10a/pretrain_models/RML2016.10a_ResNet.best.pt'
+        # self.hyper.pretraining_file = 'data/RML2016.10a/pretrain_models/RML2016.10a_ResNet.best.pt'
+        # self.hyper.pretraining_file = 'data/RML2016.10a/pretrain_models/RML2016.10a_ResNet.best.bak.pth'
         
         self.tuner.num_samples = 40
         self.tuner.resource = {"gpu": 0.5}
@@ -154,12 +155,12 @@ if __name__ == "__main__":
     args.exp_file = os.path.splitext(os.path.basename(sys.argv[0]))[0]
     # args.exp_name = 'ICASSP23'
     # args.exp_name = 'res.tuning'
-    args.exp_name = 'amc.test'
+    args.exp_name = 'res.test'
     # args.force_update = True # if need to rerun the model fiting or reload the pretraining_file (if os.path.exit(hyper.pretraining_file) to get the results, uncomment this line.)
 
     args.test = True
     args.clean = True
-    args.model = 'amcnet'
+    args.model = 'res'
 
     task = Task(args)
     # task.tuning()
