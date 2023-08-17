@@ -132,7 +132,6 @@ class mcldnn_base(nn_base):
         self.hyper.gamma = 0.8
         
 
-        
 class vtcnn2_base(nn_base):
     def base_modify(self):
         self.import_path = 'models/VT_CNN2.py'
@@ -142,6 +141,11 @@ class cldnn_base(nn_base):
     def base_modify(self):
         self.import_path = 'models/CLDNN.py'
         self.class_name = 'CLDNN'
+        
+class pcnn_base(nn_base):
+    def base_modify(self):
+        self.import_path = 'models/CLDNN.py'
+        self.class_name = 'PCNN'        
         
 class dualnet_base(nn_base):
     def base_modify(self):

@@ -7,7 +7,8 @@ from models._baseNet import BaseNet
 
 class Subsampling_ResNet(BaseNet):
     '''
-    The model arch. is same with code in https://github.com/dl4amc/dds, refered to the paper "Ensemble Wrapper Subsampling for Deep Modulation Classificatio, IEEE TCCN 2023", which is inspired by the ResNet arch. in "Over-the-air deep learning based radio signal classiﬁcation,” IEEE J. Sel. Topics Signal Process., vol. 12, no. 1, pp. 168–179, Feb. 2018."
+    The model arch. is same with code in https://github.com/dl4amc/dds, refered to the paper "Ensemble Wrapper Subsampling for Deep Modulation Classificatio, IEEE TCCN 2023", which is inspired by the ResNet arch. in "Over-the-air deep learning based radio signal classiﬁcation,” IEEE J. Sel. Topics Signal Process., vol. 12, no. 1, pp. 168–179, Feb. 2018."\n
+    https://github.com/dl4amc/dds
     '''
 
     def __init__(self, hyper=None, logger=None):

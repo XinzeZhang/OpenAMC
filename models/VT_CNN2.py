@@ -64,3 +64,4 @@ class VTCNN(BaseNet):
                 nn.init.kaiming_normal_(m.weight)
                 # nn.init.kaiming_normal_(m.bias)
                 # nn.init.constant_(m.bias, 0)        
+
