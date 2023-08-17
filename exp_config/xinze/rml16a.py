@@ -68,7 +68,7 @@ class amcnet(AMC_Net_base):
         self.hyper.latent_dim = 512
         self.hyper.num_heads = 2
         self.hyper.conv_chan_list = [36, 64, 128, 256]
-        self.hyper.pretraining_file = 'data/RML2016.10a/pretrain_models/2016.10a_AMC_Net.best.pt'
+        self.hyper.pretraining_file = 'data/RML2016.10a/pretrain_models/RML2016.10a_AMC_Net.best.pt'
 
 
 class awn(AWN_base):
@@ -79,7 +79,7 @@ class awn(AWN_base):
         self.hyper.kernel_size = 3
         self.hyper.in_channels = 64
         self.hyper.latent_dim = 320
-        self.hyper.pretraining_file = 'data/RML2016.10a/pretrain_models/2016.10a_AWN.best.pt'
+        self.hyper.pretraining_file = 'data/RML2016.10a/pretrain_models/RML2016.10a_AWN.best.pt'
         # self.hyper.pretraining_file = 'exp_results/RML2016.10a/ICASSP23/fit/awn/tuner/tpe/TuningCell_743b4993_8_gamma=0.6784,lr=0.0004,milestone_step=5_2023-08-09_03-35-19/checkpoint_000054/model.pth'
 
         self.tuner.resource = {"gpu": 0.5}
@@ -88,14 +88,14 @@ class dualnet(dualnet_base):
     def task_modify(self):
         self.hyper.epochs = 200
         self.hyper.patience = 15
-        self.hyper.pretraining_file = 'data/RML2016.10a/pretrain_models/RML2016.10a_dualnet.best.pt'
+        self.hyper.pretraining_file = 'data/RML2016.10a/pretrain_models/RML2016.10a_DualNet.best.pt'
 
 class vtcnn(vtcnn2_base):
     def task_modify(self):
         self.hyper.epochs = 100
         self.hyper.patience = 10
         self.hyper.gamma = 0.5
-        self.hyper.pretraining_file = 'data/RML2016.10a/pretrain_models/RML2016.10a_vtcnn.best.pt'
+        self.hyper.pretraining_file = 'data/RML2016.10a/pretrain_models/RML2016.10a_VTCNN.best.pt'
 
         self.tuner.resource = {"gpu": 0.5}  # set this for GPUs
 
@@ -108,7 +108,7 @@ class mcl(mcldnn_base):
         # self.hyper.gamma = 0.5502
         # self.hyper.lr = 0.0015
         self.hyper.milestone_step = 2
-        self.hyper.pretraining_file = 'data/RML2016.10a/pretrain_models/2016.10a_MCLDNN.best.pt'
+        self.hyper.pretraining_file = 'data/RML2016.10a/pretrain_models/RML2016.10a_MCLDNN.best.pt'
 
         self.tuner.num_samples = 40
         self.tuner.training_iteration = self.hyper.epochs
@@ -135,7 +135,7 @@ class res(resnet_base):
         self.hyper.batch_size = 1024
         self.hyper.milestone_step = 1
         self.hyper.patience = 20
-        self.hyper.pretraining_file = 'data/RML2016.10a/pretrain_models/RML2016.10a_res.best.pt'
+        self.hyper.pretraining_file = 'data/RML2016.10a/pretrain_models/RML2016.10a_ResNet.best.pt'
         
         self.tuner.num_samples = 40
         self.tuner.resource = {"gpu": 0.5}
@@ -153,13 +153,14 @@ if __name__ == "__main__":
     args.exp_config = os.path.dirname(sys.argv[0]).replace(os.getcwd()+'/', '')
     args.exp_file = os.path.splitext(os.path.basename(sys.argv[0]))[0]
     # args.exp_name = 'ICASSP23'
-    args.exp_name = 'res.tuning'
+    # args.exp_name = 'res.tuning'
+    args.exp_name = 'amc.test'
     # args.force_update = True # if need to rerun the model fiting or reload the pretraining_file (if os.path.exit(hyper.pretraining_file) to get the results, uncomment this line.)
 
     args.test = True
     args.clean = True
-    args.model = 'res'
+    args.model = 'amcnet'
 
     task = Task(args)
-    task.tuning()
+    # task.tuning()
     task.conduct()

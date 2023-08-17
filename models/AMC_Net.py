@@ -11,6 +11,59 @@ import copy
 from models._baseNet import BaseNet
 
 
+
+class AMC_Net(BaseNet):
+    def __init__(self, hyper = None, logger = None):
+        super().__init__(hyper, logger)  
+                   
+        self.sig_len = hyper.sig_len
+        self.extend_channel = hyper.extend_channel
+        self.latent_dim = hyper.latent_dim
+        self.num_classes = hyper.num_classes
+        self.num_heads = hyper.num_heads
+        self.conv_chan_list = hyper.conv_chan_list
+
+        if self.conv_chan_list is None:
+            self.conv_chan_list = [36, 64, 128, 256]
+
+        self.stem_layers_num = len(self.conv_chan_list) - 1
+
+        self.ACM = AdaCorrModule(self.sig_len)
+        self.MSM = MultiScaleModule(self.extend_channel)
+        self.FFM = FeaFusionModule(self.num_heads, self.sig_len, self.sig_len)
+
+        self.Conv_stem = nn.Sequential()
+
+        for t in range(0, self.stem_layers_num):
+            self.Conv_stem.add_module(f'conv_stem_{t}',
+                                      Conv_Block(
+                                          self.conv_chan_list[t],
+                                          self.conv_chan_list[t + 1])
+                                      )
+
+        self.GAP = nn.AdaptiveAvgPool1d(1)
+        self.classifier = nn.Sequential(
+            nn.Linear(self.latent_dim, self.latent_dim),
+            nn.Dropout(0.5),
+            nn.PReLU(),
+            nn.Linear(self.latent_dim, self.num_classes)
+        )
+        
+        self.to(self.hyper.device)
+
+    def forward(self, x):
+        # x = x / x.norm(p=2, dim=-1, keepdim=True)
+        x = x.unsqueeze(1)
+        x = self.ACM(x)
+        x = x / x.norm(p=2, dim=-1, keepdim=True)
+        x = self.MSM(x)
+        x = self.Conv_stem(x)
+        x = self.FFM(x.squeeze(2))
+        x = self.GAP(x)
+        y = self.classifier(x.squeeze(2))
+        return y
+
+
 class Conv_Block(nn.Module):
     def __init__(self, in_channel, out_channel):
         super(Conv_Block, self).__init__()
@@ -150,57 +203,6 @@ class FeaFusionModule(nn.Module):
         context = context.contiguous().view(shape[0], -1, shape[-1])
         return context
 
-
-class AMC_Net(BaseNet):
-    def __init__(self, hyper = None, logger = None):
-        super().__init__(hyper, logger)  
-                   
-        self.sig_len = hyper.sig_len
-        self.extend_channel = hyper.extend_channel
-        self.latent_dim = hyper.latent_dim
-        self.num_classes = hyper.num_classes
-        self.num_heads = hyper.num_heads
-        self.conv_chan_list = hyper.conv_chan_list
-
-        if self.conv_chan_list is None:
-            self.conv_chan_list = [36, 64, 128, 256]
-
-        self.stem_layers_num = len(self.conv_chan_list) - 1
-
-        self.ACM = AdaCorrModule(self.sig_len)
-        self.MSM = MultiScaleModule(self.extend_channel)
-        self.FFM = FeaFusionModule(self.num_heads, self.sig_len, self.sig_len)
-
-        self.Conv_stem = nn.Sequential()
-
-        for t in range(0, self.stem_layers_num):
-            self.Conv_stem.add_module(f'conv_stem_{t}',
-                                      Conv_Block(
-                                          self.conv_chan_list[t],
-                                          self.conv_chan_list[t + 1])
-                                      )
-
-        self.GAP = nn.AdaptiveAvgPool1d(1)
-        self.classifier = nn.Sequential(
-            nn.Linear(self.latent_dim, self.latent_dim),
-            nn.Dropout(0.5),
-            nn.PReLU(),
-            nn.Linear(self.latent_dim, self.num_classes)
-        )
-        
-        self.to(self.hyper.device)
-
-    def forward(self, x):
-        # x = x / x.norm(p=2, dim=-1, keepdim=True)
-        x = x.unsqueeze(1)
-        x = self.ACM(x)
-        x = x / x.norm(p=2, dim=-1, keepdim=True)
-        x = self.MSM(x)
-        x = self.Conv_stem(x)
-        x = self.FFM(x.squeeze(2))
-        x = self.GAP(x)
-        y = self.classifier(x.squeeze(2))
-        return y
 
     
 # if __name__ == '__main__':
