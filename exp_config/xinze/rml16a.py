@@ -167,6 +167,7 @@ class pcnn(pcnn_base):
         self.hyper.batch_size = 64
         self.hyper.gamma = 0.5
         self.hyper.patience = 20
+        self.hyper.milestone_step = 1
         
 if __name__ == "__main__":
     args = get_parser()
@@ -182,7 +183,7 @@ if __name__ == "__main__":
 
     args.test = True
     args.clean = False
-    args.model = 'pcnn'
+    # args.model = 'pcnn'
 
     task = Task(args)
     # task.tuning()
