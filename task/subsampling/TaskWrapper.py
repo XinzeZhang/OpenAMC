@@ -8,10 +8,10 @@ from collections import Counter
 from tqdm import tqdm
 from task.base.TaskWrapper import Task
 from task.TaskParser import get_parser
-from task.subsampling.TaskTuner import maskTuner
 from sklearn.metrics import accuracy_score, confusion_matrix, f1_score, cohen_kappa_score
 from task.util import os_makedirs, os_rmdirs, set_logger, fix_seed
 from task.base.TaskVisual import save_training_process, save_confmat, save_snr_acc
+from task.subsampling.pretrain.TaskTuner import maskTuner
 
 class subsamplingTask(Task):
     def __init__(self, args):

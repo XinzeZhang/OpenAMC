@@ -33,7 +33,16 @@ class amcnet(AMC_Net_base):
         self.hyper.latent_dim = 512
         self.hyper.num_heads = 2
         self.hyper.conv_chan_list = [36, 64, 128, 256]
-        self.hyper.pretraining_file = 'data/RML2016.10a/pretrain_models/RML2016.10a_AMC_Net.best.pt'
+        self.hyper.pretraining_file = '/home/xinze/Documents/Github/OpenAMC/data/RML2016.10a/pretrain_models/RML2016.10a_AMC_Net.best.pt'
+        
+        self.tuner.resource = {"gpu": 0.33}
+        self.tuner.algo = 'pso'
+        self.tuner.num_samples = 200
+        self.tuner.using_sched = False
+        self.tuner.min_training_iteration = 1
+        self.tuner.max_training_iteration = 1
+        self.tuning = Opt()
+        self.tuning.merge({'inputMask_{}'.format(i) :  tune.choice([0,1]) for i in range(128)})
         
 class awn(AWN_base):
     def task_modify(self):
@@ -43,12 +52,14 @@ class awn(AWN_base):
         self.hyper.kernel_size = 3
         self.hyper.in_channels = 64
         self.hyper.latent_dim = 320
-        self.hyper.pretraining_file = 'data/RML2016.10a/pretrain_models/RML2016.10a_AWN.best.pt'
+        self.hyper.pretraining_file = '/home/xinze/Documents/Github/OpenAMC/data/RML2016.10a/pretrain_models/RML2016.10a_AWN.best.pt'
 
         self.tuner.resource = {"gpu": 0.33}
         self.tuner.num_samples = 90
-        self.tuner.min_training_iteration = 50
-        self.tuner.max_training_iteration = 400
+        self.tuner.using_sched = False
+        self.tuner.min_training_iteration = 1
+        self.tuner.max_training_iteration = 1
+        self.tuning = Opt()
         self.tuning.merge({'inputMask_{}'.format(i) :  tune.choice([0,1]) for i in range(128)})
         
 
@@ -66,9 +77,9 @@ if __name__ == "__main__":
     # args.force_update = True # if need to rerun the model fiting or reload the pretraining_file (if os.path.exit(hyper.pretraining_file) to get the results, uncomment this line.)
 
     args.test = True
-    args.clean = False
-    args.exp_name = 'ICASSP24.awn.v0'
-    args.model = 'awn'
+    args.clean = True
+    args.exp_name = 'ICASSP24.amc.pretrain'
+    # args.model = 'awn'
     
     
     task = subsamplingTask(args)
