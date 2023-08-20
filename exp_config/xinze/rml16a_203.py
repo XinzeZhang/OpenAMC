@@ -2,7 +2,7 @@ import os
 import sys
 sys.path.append(os.path.join(os.path.dirname(
     __file__), os.path.pardir, os.path.pardir))
-from models._baseSetting import AMC_Net_base, AWN_base, mcldnn_base, vtcnn2_base, dualnet_base, resnet_base, cldnn_base, pcnn_base
+from models.base._baseSetting import AMC_Net_base, AWN_base, mcldnn_base, vtcnn2_base, dualnet_base, resnet_base, cldnn_base, pcnn_base
 from ray import tune
 import torch
 import numpy as np
@@ -168,6 +168,7 @@ class pcnn(pcnn_base):
         self.hyper.gamma = 0.5
         self.hyper.patience = 20
         self.hyper.milestone_step = 1
+        self.hyper.pretraining_file = 'data/RML2016.10a/pretrain_models/RML2016.10a_PCNN.best.pt'
         self.tuner.num_samples = 20
         self.tuner.resource = {"gpu": 0.33}
         self.tuning.lr = tune.loguniform(1e-4, 2e-3)
@@ -185,12 +186,12 @@ if __name__ == "__main__":
     args.exp_name = 'ICASSP24'
     # args.exp_name = 'cldnn.tuning'
     # args.exp_name = 'pcnn.test'
-    # args.force_update = True # if need to rerun the model fiting or reload the pretraining_file (if os.path.exit(hyper.pretraining_file) to get the results, uncomment this line.)
+    args.force_update = True # if need to rerun the model fiting or reload the pretraining_file (if os.path.exit(hyper.pretraining_file) to get the results, uncomment this line.)
 
     args.test = True
     args.clean = False
     args.model = 'pcnn'
 
     task = Task(args)
-    task.tuning()
+    # task.tuning()
     task.conduct()

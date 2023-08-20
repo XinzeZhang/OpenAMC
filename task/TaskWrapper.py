@@ -56,7 +56,7 @@ class Task(Opt):
                                  args.model)
         else:
             try:
-                share_module_path = importlib.import_module('models._baseSetting')
+                share_module_path = importlib.import_module('models.base._baseSetting')
                 model_opts = getattr(
                     share_module_path, self.model_name + '_base')
             except:

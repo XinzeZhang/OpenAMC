@@ -1,12 +1,12 @@
 import os
 import sys
-sys.path.append(os.path.join(os.path.dirname(__file__), os.path.pardir))
+# sys.path.append(os.path.join(os.path.dirname(__file__), os.path.pardir, os.path.pardir))
 
 import torch
 import torch.nn as nn
 
-from models._baseNet import BaseNet
-from models._baseTrainer import Trainer
+from models.base._baseNet import BaseNet
+from models.base._baseTrainer import Trainer
 
 class AWN(BaseNet):
     def __init__(self, hyper = None, logger = None):

@@ -1,6 +1,6 @@
 import os
 import sys
-sys.path.append(os.path.join(os.path.dirname(__file__), os.path.pardir))
+# sys.path.append(os.path.join(os.path.dirname(__file__), os.path.pardir, os.path.pardir))
 
 import torch
 import torch.nn as nn
@@ -8,7 +8,7 @@ import math
 import torch.nn.functional as F
 import copy
 
-from models._baseTrainer import Trainer
+from models.base._baseTrainer import Trainer
 
 
 class BaseNet(nn.Module):
@@ -55,7 +55,7 @@ class BaseNet(nn.Module):
     def xfit(self, train_loader, val_loader):
         """
         If self.hyper has pretraining_file, then directly loading the pretraining states;\n
-        else, training the model with the Traniner in models._baseTrainer.\n
+        else, training the model with the Traniner in models.base._baseTrainer.\n
         
         Return: fit_info
         """

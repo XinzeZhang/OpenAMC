@@ -1,6 +1,6 @@
 import os
 import sys
-sys.path.append(os.path.join(os.path.dirname(__file__), os.path.pardir))
+# sys.path.append(os.path.join(os.path.dirname(__file__), os.path.pardir, os.path.pardir))
 
 from task.TaskLoader import Opt
 from ray import tune
@@ -11,7 +11,7 @@ class nn_base(Opt):
         super().__init__()
         
         self.arch = 'torch_nn'
-        self.trainer_module = ('models/_baseTrainer.py', 'Trainer')
+        self.trainer_module = ('models/base/_baseTrainer.py', 'Trainer')
         
         self.hyper = hyper()
         self.tuner = tuner()
@@ -89,7 +89,7 @@ class tuning(Opt):
 
 class AMC_Net_base(nn_base):
     def base_modify(self):
-        self.import_path = 'models/AMC_Net.py'
+        self.import_path = 'models/nn/AMC_Net.py'
         self.class_name = 'AMC_Net'
     def hyper_modify(self):        
         self.hyper.gamma = 0.1
@@ -101,7 +101,7 @@ class AMC_Net_base(nn_base):
         
 class AWN_base(nn_base):
     def base_modify(self):
-        self.import_path = 'models/AWN.py'
+        self.import_path = 'models/nn/AWN.py'
         self.class_name = 'AWN'
         self.trainer_module = (self.import_path, 'AWN_Trainer')
         
@@ -121,7 +121,7 @@ class mcldnn_base(nn_base):
     '''Refer to the paper:  'A Spatiotemporal Multi-Channel Learning Framework for Automatic Modulation Recognition.
     '''
     def base_modify(self):
-        self.import_path = 'models/MCLDNN.py'
+        self.import_path = 'models/nn/MCLDNN.py'
         self.class_name = 'MCLDNN'
         self.trainer_module = (self.import_path, 'MCLDNN_Trainer')
         
@@ -134,25 +134,25 @@ class mcldnn_base(nn_base):
 
 class vtcnn2_base(nn_base):
     def base_modify(self):
-        self.import_path = 'models/VT_CNN2.py'
+        self.import_path = 'models/nn/VT_CNN2.py'
         self.class_name = 'VTCNN'
         
 class cldnn_base(nn_base):
     def base_modify(self):
-        self.import_path = 'models/CLDNN.py'
+        self.import_path = 'models/nn/CLDNN.py'
         self.class_name = 'CLDNN'
         
 class pcnn_base(nn_base):
     def base_modify(self):
-        self.import_path = 'models/CLDNN.py'
+        self.import_path = 'models/nn/CLDNN.py'
         self.class_name = 'PCNN'        
         
 class dualnet_base(nn_base):
     def base_modify(self):
-        self.import_path = 'models/Dual_Net.py'
+        self.import_path = 'models/nn/Dual_Net.py'
         self.class_name = 'DualNet'
         
 class resnet_base(nn_base):
     def base_modify(self):
-        self.import_path = 'models/ResNet.py'
+        self.import_path = 'models/nn/ResNet.py'
         self.class_name = 'Subsampling_ResNet'

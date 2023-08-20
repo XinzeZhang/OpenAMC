@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 # from model.base_model import BaseModel
-from models._baseNet import BaseNet
+from models.base._baseNet import BaseNet
 
 class VTCNN(BaseNet):
     '''Refer to https://github.com/radioML/examples/blob/master/modulation_recognition/RML2016.10a_VTCNN2_example.ipynb'''

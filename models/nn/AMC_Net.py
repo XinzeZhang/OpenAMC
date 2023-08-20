@@ -1,6 +1,6 @@
 import os
 import sys
-sys.path.append(os.path.join(os.path.dirname(__file__), os.path.pardir))
+# sys.path.append(os.path.join(os.path.dirname(__file__), os.path.pardir, os.path.pardir))
 
 import torch
 import torch.nn as nn
@@ -8,7 +8,7 @@ import math
 import torch.nn.functional as F
 import copy
 
-from models._baseNet import BaseNet
+from models.base._baseNet import BaseNet
 
 
 

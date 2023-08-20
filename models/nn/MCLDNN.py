@@ -3,9 +3,9 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 # from model.base_model import BaseModel
-from models._baseNet import BaseNet
+from models.base._baseNet import BaseNet
 import os
-from models._baseTrainer import Trainer, EarlyStopping
+from models.base._baseTrainer import Trainer, EarlyStopping
 import time
 import pandas as pd
 from torch import optim, nn

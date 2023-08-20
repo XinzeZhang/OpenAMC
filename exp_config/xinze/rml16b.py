@@ -9,7 +9,7 @@ import pickle
 import numpy as np
 import torch
 
-from models._baseSetting import AMC_Net_base, AWN_base
+from models.base._baseSetting import AMC_Net_base, AWN_base
 
 class Data(TaskDataset):
     def __init__(self, opts):
