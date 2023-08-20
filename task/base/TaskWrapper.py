@@ -5,7 +5,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), os.path.pardir))
 from tqdm.std import tqdm
 import importlib
 
-from task.TaskLoader import Opt
+from task.base.TaskLoader import Opt
 from task.TaskParser import get_parser
 
 import torch
@@ -15,11 +15,11 @@ import statistics
 from tqdm import tqdm
 import shutil
 from task.util import os_makedirs, os_rmdirs, set_logger, fix_seed
-from task.TaskVisual import save_training_process, save_confmat, save_snr_acc
+from task.base.TaskVisual import save_training_process, save_confmat, save_snr_acc
 from sklearn.metrics import accuracy_score, confusion_matrix, f1_score, cohen_kappa_score
 from collections.abc import Mapping
 
-from task.TaskTuner import HyperTuner
+from task.base.TaskTuner import HyperTuner
 
 class Task(Opt):
     def __init__(self, args):

@@ -2,8 +2,8 @@ import os, sys
 sys.path.append(os.path.join(os.path.dirname(__file__), os.path.pardir, os.path.pardir))
 
 from task.TaskParser import get_parser
-from task.TaskWrapper import Task
-from task.TaskLoader import TaskDataset
+from task.base.TaskWrapper import Task
+from task.base.TaskLoader import TaskDataset
 
 import pickle
 import numpy as np

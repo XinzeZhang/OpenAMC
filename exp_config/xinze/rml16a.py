@@ -7,8 +7,8 @@ from ray import tune
 import torch
 import numpy as np
 import pickle
-from task.TaskLoader import TaskDataset
-from task.TaskWrapper import Task
+from task.base.TaskLoader import TaskDataset
+from task.base.TaskWrapper import Task
 from task.TaskParser import get_parser
 
 

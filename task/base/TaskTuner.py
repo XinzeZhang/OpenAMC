@@ -6,7 +6,7 @@ import torch
 import torch.utils.data as Data
 
 import ray
-from task.TaskLoader import Opt
+from task.base.TaskLoader import Opt
 # from ray.tune.suggest.bohb import TuneBOHB
 # from ray.tune.schedulers import HyperBandForBOHB
 from ray.tune.schedulers import ASHAScheduler

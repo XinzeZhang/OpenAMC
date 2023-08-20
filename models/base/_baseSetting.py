@@ -2,7 +2,7 @@ import os
 import sys
 # sys.path.append(os.path.join(os.path.dirname(__file__), os.path.pardir, os.path.pardir))
 
-from task.TaskLoader import Opt
+from task.base.TaskLoader import Opt
 from ray import tune
 import torch
 
