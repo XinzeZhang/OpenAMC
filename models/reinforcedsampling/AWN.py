@@ -1,5 +1,5 @@
 from models.nn.AWN import AWN
-from models.subsampling._maskNet import MaskNet
+from models.reinforcedsampling._maskNet import MaskNet
 
 import torch
 import torch.nn as nn

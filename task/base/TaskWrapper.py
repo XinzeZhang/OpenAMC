@@ -75,8 +75,10 @@ class Task(Opt):
         if cuda_exist and args.cuda:
             self.model_opts.hyper.device = torch.device('cuda:{}'.format(args.gid))
             torch.cuda.set_device(args.gid)
+            self.device_id = args.gid
         else:
             self.model_opts.hyper.device = torch.device('cpu')
+            self.device_id = -1
 
 
         self.exp_dir = 'exp_results' if args.test == False else 'exp_tempTest'
@@ -152,7 +154,16 @@ class Task(Opt):
         logger.critical(f"Signal_val.shape: {list(self.data_opts.val_set[0].shape)}")
         logger.critical(f"Signal_test.shape: {list(self.data_opts.test_set[0].shape)}")
         self.data_statue = True
-        
+    
+    def load_fitset(self, cid_hyper = None):
+        batch_size = 64 if cid_hyper is None else cid_hyper.batch_size
+        train_loader, val_loader = self.data_opts.load_fitset(fit_batch_size = batch_size)
+        return train_loader, val_loader
+
+    def load_testset(self, cid_hyper = None):
+        batch_size = 64 if cid_hyper is None else cid_hyper.batch_size
+        test_sample_list, test_lable_list = self.data_opts.load_testset(test_batch_size = batch_size)
+        return test_sample_list, test_lable_list
     
     def conduct(self, force_update = None):
         # os_makedirs(self.model_fit_dir)        
@@ -182,7 +193,7 @@ class Task(Opt):
   
             
 
-    def conduct_fit(self, clogger = None, result_file = None, innerSaving = True):
+    def conduct_fit(self, clogger = None, result_file = None):
         try:
             if clogger is None:
                 clogger = self.logger_config(
@@ -213,7 +224,7 @@ class Task(Opt):
 
             
 
-            train_loader, val_loader = self.data_opts.load_fitset(fit_batch_size = cid_hyper.batch_size)
+            train_loader, val_loader = self.load_fitset(cid_hyper)
             clogger.critical('Loading training set and validation set.')
             clogger.info(f'Fit batch size: {train_loader.batch_size}')
             clogger.info(f"Train_loader batch: {len(train_loader)}")
@@ -249,14 +260,7 @@ class Task(Opt):
 
             clogger.critical('>'*40)
             clogger.critical('End fit.')
-            pre_lab_all, label_all = self.eval_testset(model, clogger)
-            
-            tgt_result_file = result_file if result_file is not None else self.model_result_file # add to allow the external configuration
-            
-            if innerSaving:
-                np.savez(tgt_result_file, pred = pre_lab_all, label= label_all)
-                clogger.critical('Save result file to the location: {}'.format(tgt_result_file))
-            clogger.critical('-'*80)   
+            pre_lab_all, label_all = self.eval_testset(model, clogger, result_file)
         
             return pre_lab_all, label_all, epochs_stats
             
@@ -265,7 +269,7 @@ class Task(Opt):
                 '{}\nGot an error on conduction.\n{}'.format('!'*50, '!'*50))
             raise SystemExit()
 
-    def eval_testset(self, model, logger):
+    def eval_testset(self, model, logger, result_file):
         if logger is not None:
             logger.critical('>'*40)
             logger.critical('Evaluation on the testing set.')
@@ -275,7 +279,7 @@ class Task(Opt):
             if self.model_opts.arch == 'torch_nn':
                 model.eval()
                        
-            test_sample_list, test_lable_list = self.data_opts.load_testset()
+            test_sample_list, test_lable_list = self.load_testset(model.hyper)
 
             pre_lab_all = []
             label_all = []
@@ -292,6 +296,12 @@ class Task(Opt):
                 
                 pre_lab_all.append(pred_i)
                 label_all.append(label_i)
+            
+            tgt_result_file = result_file if result_file is not None else self.model_result_file # add to allow the external configuration
+            
+            np.savez(tgt_result_file, pred = pre_lab_all, label= label_all)
+            logger.critical('Save result file to the location: {}'.format(tgt_result_file))
+            logger.critical('-'*80)   
                 
         return pre_lab_all, label_all
 
@@ -353,22 +363,30 @@ class Task(Opt):
         
         return F1_score, kappa, acc
 
+    def load_tuner(self, logger):
+        series_tuner = HyperTuner(self.model_opts, logger, self.data_opts)
+        return series_tuner
+
     def tuning(self):
-        try:
-            self.tune = True
-            self.best_checkpoint_path = None
+        
+        if self.device_id > 0:
+            raise ValueError('When using tuning mode, please set args.gid with 0 or using cpu.')
+        
+        self.tune = True
+        self.best_checkpoint_path = None
+        
+        if 'innerTuning' in self.model_opts.dict:
+            if self.model_opts.innerTuning == True:
+                self.tune = False
+        
+        if self.tune:
+            tuner_dir = os.path.join(self.model_fit_dir, 'tuner')
+            os_makedirs(tuner_dir)
             
-            if 'innerTuning' in self.model_opts.dict:
-                if self.model_opts.innerTuning == True:
-                    self.tune = False
+            self.model_opts.tuner.dir = tuner_dir
+            tLogger = self.logger_config(tuner_dir, 'tuning')
             
-            if self.tune:
-                tuner_dir = os.path.join(self.model_fit_dir, 'tuner')
-                os_makedirs(tuner_dir)
-                
-                self.model_opts.tuner.dir = tuner_dir
-                tLogger = self.logger_config(tuner_dir, 'tuning')
-                
+            try:
                 pT_hyper = Opt()            
                 if 'preTuning_model_path' in self.model_opts.tuner.dict:
                     pT_path = self.model_opts.tuner.preTuning_model_path
@@ -387,8 +405,7 @@ class Task(Opt):
                     if self.data_statue is False:
                         self.load_data(logger=tLogger)
                     
-                    series_tuner = HyperTuner(
-                        self.model_opts, tLogger, self.data_opts)
+                    series_tuner = self.load_tuner(logger=tLogger)
                     best_hyper, best_checkpoint_path = series_tuner.conduct() # best_hyper is an Obj
                 else:
                     best_hyper = Opt()
@@ -411,12 +428,13 @@ class Task(Opt):
                 for (arg, value) in pT_hyper_info.items():
                     tLogger.info("Tuning Results:\t %s - %r", arg, value)
                     
-            return self.tune               
-        except:
-            self.tune = False
-            tLogger.exception(
-                '{}\nGot an error on tuning.\n{}'.format('!'*50, '!'*50))
-            raise SystemExit()
+            except:
+                self.tune = False
+                tLogger.exception(
+                    '{}\nGot an error on tuning.\n{}'.format('!'*50, '!'*50))
+                raise SystemExit()
+            
+        return self.tune               
 
     # def load_tuning(self):
     #     tuner_dir = os.path.join(self.model_fit_dir, 'tuner')

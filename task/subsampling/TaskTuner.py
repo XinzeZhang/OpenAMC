@@ -33,155 +33,38 @@ import nevergrad as ng
 import importlib
 
 from task.util import os_rmdirs,set_logger,set_fitset
+from task.base.TaskTuner import HyperTuner
+from task.subsampling.TaskLoader import mask_zeros
+from random import sample
 
+def trial_str_creator(trial):
+    return "{}_{}".format(trial.trainable_name, trial.trial_id)
 
-class HyperTuner(Opt):
+class maskTuner(HyperTuner):
     def __init__(self, opts = None, logger= None, subPack = None):
-        super().__init__()
+        super().__init__(opts, logger, subPack)
 
-        if opts is not None:
-            self.merge(opts)
-
-
-        self.best_config = Opt()
-        
-        self.logger = logger
-        
-        # train_loader, val_loader = subPack.load_fitset()
-        # self.batch_size = subPack.batch_size
-        self.subPack = subPack
-        # self.train_data = subPack.train_set
-        # self.valid_data = subPack.val_set
-        
-        self.metric = 'best_val_acc'
-        if 'num_samples' not in self.tuner.dict:
-            self.tuner.num_samples = 20
-            if self.algo_name == 'grid':
-                self.tuner.num_samples = 1
-                
-        if 'num_cpus' not in self.tuner.dict:
-            self.tuner.num_cpus = 30
-        
-        if 'max_training_iteration' not in self.tuner.dict:
-            self.tuner.max_training_iteration = 100
-        
-        if 'min_training_iteration' not in self.tuner.dict:
-            self.tuner.min_training_iteration = 20
-        
-        self.using_sched = True
-        if 'using_sched' in self.tuner.dict and self.tuner.using_sched is False:
-            self.using_sched = False
-        
-        if 'resource' not in self.tuner.dict:
-            self.resource = {
-            "gpu": 1  # set this for GPUs
-        }
-        else:
-            self.resource = self.tuner.resource
-            
-        # Parallel nums = min(num_cpus // cpu, num_gpus // gpu), where num_gpus = torch.cuda.device_count()
-            
-        self.loss_lower_bound = 0
-        self.gen_p2e()
-        self.algo_init()
-    
     def gen_p2e(self,):
-        self.points_to_evaluate = []
-        if 'points_to_evaluate' in self.tuner.dict:
-            self.points_to_evaluate = self.tuner.points_to_evaluate
-            assert len(self.points_to_evaluate) > 0
-                          
-    def algo_init(self,):
-        if 'algo' not in self.tuner.dict:
-            self.algo_name = 'rand'
-        elif self.tuner.algo not in ['bayes','tpe','pso', 'rand', 'grid']:
-            raise ValueError('Non supported tuning algo: {}'.format(self.tuner.algo))
-        else:
-            self.algo_name = self.tuner.algo
-        
-        if self.algo_name == 'bayes':
-            self.tuner.name = 'Bayes_Search'
-            self.algo_func = ConcurrencyLimiter(AxSearch(
-                # metric=self.metric, mode='max',
-                verbose_logging = False), max_concurrent=6)
+        config = {}
+        for key in self.tuning.dict.keys():
+            config[key] = self.hyper.dict[key]
             
-        elif self.algo_name == 'tpe':
-            # Tree-structured Parzen Estimator https://docs.ray.io/en/master/tune/examples/optuna_example.html
-            self.tuner.name = 'TPE_Search'
-            self.algo_func =  ConcurrencyLimiter(
-            OptunaSearch(points_to_evaluate=self.points_to_evaluate
-                ), 
-            max_concurrent=12
-            )
-            
-        elif self.algo_name == 'pso':
-            # https://github.com/facebookresearch/nevergrad
-            self.tuner.name = 'PSO_Search'
-            _popsize= min((20, self.tuner.num_samples // 10))
-            self.algo_func = NevergradSearch(
-            optimizer=ng.optimizers.ConfiguredPSO(
-                popsize= _popsize
-                ),
-            # metric=self.metric,
-            # mode="max",
-            points_to_evaluate=self.points_to_evaluate
-            )
-        elif self.algo_name == 'rand' or self.algo_name == 'grid':
-            self.tuner.name = 'Rand_Search'   
-            self.algo_func = BasicVariantGenerator(max_concurrent=4)
+        self.points_to_evaluate = [config]
+        
+        idx = [i for i in range(self.hyper.sig_len)]
+        tags = ['inputMask_{}'.format(i) for i in range(self.hyper.sig_len)]
+        
+        for mr in [0.05, 0.1, 0.15, 0.2]:
+            num = int(self.hyper.sig_len * mr)
+            for t in range(2):
+                selected_idx = sample(idx, num)
+                new_config = config.copy()
+                for s_idx in selected_idx:
+                    new_config['inputMask_{}'.format(s_idx)] = 0
+                
+                self.points_to_evaluate.append(new_config)
 
-    def once_sample(self,):
-        config = Opt(init=self.tuning)
-        for key in self.tuning.dict:
-            config.dict[key] = self.tuning.dict[key].sample()
-        
-        _hyper = Opt()
-        _hyper.merge(self.hyper)
-        _hyper.update(config) # Using ignore_unk will be very risky
-        model = importlib.import_module(self.import_path)
-        model = getattr(model, self.class_name)
-        model = model(_hyper, self.logger)
-        
-        train_loader, val_loader = self.subPack.load_fitset(_hyper.batch_size)
-        fit_info = model.xfit(train_loader, val_loader)
-        t_acc, v_acc = fit_info.train_acc.max(), fit_info.val_acc.max()   
-        
-        metric_dict = {
-            'tra_acc': t_acc,
-            'val_acc': v_acc,
-        }
-        self.best_result = metric_dict[self.metric]
-        self.best_config.merge(config)
-        return self.best_config
-
-    def conduct(self,):
-        self.best_checkpoint_path = None
-        
-        if self.tuner.num_samples == 1 and self.algo_name == 'rand':
-            self.best_config = self.once_sample()
-        else:
-            tuner_algo_dir = os.path.join(self.tuner.dir, self.algo_name)
-            results_pkl = os.path.join(tuner_algo_dir, 'tuner.pkl' )
-            if os.path.exists(results_pkl):
-                try:
-                    analysis = ExperimentAnalysis(tuner_algo_dir)
-                    best_config = analysis.get_best_config(metric='val_acc', mode='max', scope='all')
-                    # best_checkpoint = analysis.get_best_checkpoint(analysis.get_best_logdir(metric='val_acc', mode='max', scope = 'all'), metric='val_acc', mode='max')
-                    best_trail = analysis.get_best_trial(metric='val_acc', mode='max', scope='all')
-                    best_checkpoint = analysis.get_best_checkpoint(best_trail, metric='val_acc', mode='max')
-                    self.best_checkpoint_path = os.path.join(best_checkpoint.path, 'model.pth')
-                    
-                    self.best_config  = best_config
-                except:
-                    raise ValueError('Error in loading the tuning results in {}\nPlease check the tuning results carefully, then remove it and rerun.'.format(tuner_algo_dir))
-                    # raise SystemExit()
-                    # os_rmdirs(tuner_algo_dir) 
-                    # self._conduct(tuner_algo_dir)
-            else:
-                self._conduct()
-            # self.best_config = self._conduct()
-        
-        return self.best_config, self.best_checkpoint_path 
+                
 
     def _conduct(self,):
         
@@ -197,7 +80,7 @@ class HyperTuner(Opt):
         # self.tuner.num_samples = 80
         tuner = tune.Tuner(
             tune.with_resources(
-                tune.with_parameters(TuningCell, data=func_data), 
+                tune.with_parameters(maskTuningCell, data=func_data), 
                 resources=self.resource),
             param_space=self.tuning.dict,
             tune_config=
@@ -207,6 +90,8 @@ class HyperTuner(Opt):
             mode="max",
             num_samples=self.tuner.num_samples,
             scheduler=sched,
+            trial_name_creator=trial_str_creator,
+            trial_dirname_creator=trial_str_creator,
             # name=self.algo_name,
             # resources_per_trial=self.resource,
             # verbose=1,
@@ -229,9 +114,7 @@ class HyperTuner(Opt):
         )
         
         results = tuner.fit() 
-        # https://docs.ray.io/en/latest/tune/tutorials/tune-output.html?highlight=tensorboard#where-to-find-log-to-file-files
-        # to see this,  using:  tensorboard --logdir /home/xinze/Documents/Github/OpenAMC/exp_tempTest/RML2016.10a/tuning.mcl/fit/mcl/tuner/tpe --host 192.168.80.XXX
-        
+
         df = results.get_dataframe()
         df.to_csv(os.path.join(self.tuner.dir, '{}.trial.csv'.format(self.algo_name)))
         ray.shutdown()
@@ -243,7 +126,7 @@ class HyperTuner(Opt):
       
     
 
-class TuningCell(tune.Trainable):
+class maskTuningCell(tune.Trainable):
     '''
     Trainable class of tuning stochastic neural network
     see https://docs.ray.io/en/latest/tune/examples/tune-pytorch-cifar.html#the-train-function
@@ -267,7 +150,17 @@ class TuningCell(tune.Trainable):
         
         self.sample_hyper = _hyper
         self.num_workers = 0 if 'num_workers' not in _hyper.dict else  _hyper.num_workers
-        train_loader, val_loader = set_fitset(batch_size=_hyper.batch_size, train_set=data.train_set, val_set=data.val_set)
+        
+        for i in range(_hyper.sig_len):
+            if 'inputMask_{}'.format(i) not in _hyper.dict:
+                raise ValueError('Missing hyper config: "inputMask_{}"!'.format(i))
+            
+        inputMask = [_hyper.dict['inputMask_{}'.format(i)] for i in range(_hyper.sig_len)]
+        
+        train_set = mask_zeros(data.train_set, inputMask)
+        val_set = mask_zeros(data.val_set, inputMask)
+        
+        train_loader, val_loader = set_fitset(batch_size=_hyper.batch_size, train_set=train_set, val_set=val_set)
         
         self.logger.critical('Loading training set and validation set.')
         self.logger.info(f"Train_loader batch: {len(train_loader)}")
@@ -290,7 +183,6 @@ class TuningCell(tune.Trainable):
         self.trainer = trainer(sample_model, train_loader, val_loader, self.base_hyper, self.logger)
         # self.trainer.cfg.patience = self.trainer.cfg.epochs # Actually, in TuningCell, patience does not work as the same as in trainer.
         self.trainer.before_train()
-    
     
     def step(self,):
         self.trainer.before_train_step()

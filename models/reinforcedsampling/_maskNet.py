@@ -31,6 +31,8 @@ class MaskNet(BaseNet):
         super().__init__(hyper, logger)
         
     def init_inputMask(self,):
+        '''the inputMask constrain should be in the tuningcell
+        '''
         input_select_tag = False
         for i in range(self.hyper.sig_len):
             if 'inputMask_{}'.format(i) in self.hyper.dict:

@@ -70,3 +70,24 @@ son.fit()
 # print(x)
 # max_pool_1d(x)
 # %%
+class test():
+    @staticmethod
+    def sig_len():
+        """
+        docstring
+        """
+        return 128
+    
+print(test.sig_len)
+# %%
+a = {'a':1}
+
+b = a.copy()
+b['a'] = 2
+
+
+print(a)
+print(b)
+for key in a.keys():
+    print(key)
+# %%
