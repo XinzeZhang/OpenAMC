@@ -76,11 +76,13 @@ class res(resnet_base):
         self.hyper.patience = 20
         # self.hyper.pretraining_file ='/home/xinze/Documents/Github/OpenAMC/data/RML2016.10a/pretrain_models/RML2016.10a_ResNet.best.pt'
         
-        self.tuner.num_samples = 200
-        self.tuner.resource = {"gpu": 0.5}
+        self.tuner.num_samples = 60
+        self.tuner.resource = {"gpu": 0.33}
         self.tuner.using_sched = False
-        self.tuner.min_training_iteration = 1
-        self.tuner.max_training_iteration = 1
+        self.tuner.min_training_iteration = 30
+        self.tuner.max_training_iteration = 200
+        self.tuner.odd_check = False
+        
         self.tuning = Opt()
         self.tuning.merge({'inputMask_{}'.format(i) :  tune.choice([0,1]) for i in range(128)})
                 
