@@ -97,11 +97,11 @@ if __name__ == "__main__":
     # args.exp_name = 'ICASSP24'
     # args.exp_name = 'cldnn.test'
     # args.exp_name = 'ICASSP24.subsampling'
-    # args.force_update = True # if need to rerun the model fiting or reload the pretraining_file (if os.path.exit(hyper.pretraining_file) to get the results, uncomment this line.)
+    args.force_update = True # if need to rerun the model fiting or reload the pretraining_file (if os.path.exit(hyper.pretraining_file) to get the results, uncomment this line.)
 
     args.test = True
-    args.clean = True
-    # args.model = 'awn'
+    args.clean = False
+    args.model = 'awn'
     args.exp_name = f'ICASSP24.{args.model}.maskcut'
     
     

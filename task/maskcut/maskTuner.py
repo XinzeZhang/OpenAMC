@@ -50,10 +50,10 @@ class MaskTuner(HyperTuner):
         for key in self.tuning.dict.keys():
             config[key] = self.hyper.dict[key]
             
-        self.points_to_evaluate = [config]
+        self.points_to_evaluate = []
         
         idx = [i for i in range(self.hyper.sig_len)]
-        tags = ['inputMask_{}'.format(i) for i in range(self.hyper.sig_len)]
+        # tags = ['inputMask_{}'.format(i) for i in range(self.hyper.sig_len)]
         
         for mr in [0.02, 0.03, 0.04, 0.05]:
             num = int(self.hyper.sig_len * mr)
@@ -95,6 +95,7 @@ class MaskTuner(HyperTuner):
             scheduler=sched,
             trial_name_creator=trial_str_creator,
             trial_dirname_creator=trial_str_creator,
+            chdir_to_trial_dir = False,
             # name=self.algo_name,
             # resources_per_trial=self.resource,
             # verbose=1,
@@ -202,6 +203,15 @@ class maskTuningCell(tune.Trainable):
         '''If mask_ratio > max_ratio, random select mask idx to set as 1 to make mask_ratio be decresed to max_ratio
         '''
         total_sig_len = self.sample_hyper.mask_num + self.sample_hyper.sig_len
+        
+        if self.sample_hyper.mask_num == 0:
+            rev_ids = sample([i for i in range(total_sig_len)], 2)
+            for id in rev_ids:
+                self.inputMask[rev_ids] = 0
+            
+            self.sample_hyper.mask_num += 2
+            self.sample_hyper.sig_len -= 2
+            self.sample_hyper.mask_ratio = self.sample_hyper.mask_num / total_sig_len 
         
         if self.odd_check:
             if self.sample_hyper.mask_num % 2 != 0:

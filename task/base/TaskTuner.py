@@ -162,23 +162,26 @@ class HyperTuner(Opt):
         else:
             tuner_algo_dir = os.path.join(self.tuner.dir, self.algo_name)
             results_pkl = os.path.join(tuner_algo_dir, 'tuner.pkl' )
-            if os.path.exists(results_pkl):
-                try:
-                    analysis = ExperimentAnalysis(tuner_algo_dir)
-                    best_config = analysis.get_best_config(metric='val_acc', mode='max', scope='all')
-                    # best_checkpoint = analysis.get_best_checkpoint(analysis.get_best_logdir(metric='val_acc', mode='max', scope = 'all'), metric='val_acc', mode='max')
-                    best_trail = analysis.get_best_trial(metric='val_acc', mode='max', scope='all')
-                    best_checkpoint = analysis.get_best_checkpoint(best_trail, metric='val_acc', mode='max')
-                    self.best_checkpoint_path = os.path.join(best_checkpoint.path, 'model.pth')
-                    
-                    self.best_config  = best_config
-                except:
-                    raise ValueError('Error in loading the tuning results in {}\nPlease check the tuning results carefully, then remove it and rerun.'.format(tuner_algo_dir))
-                    # raise SystemExit()
-                    # os_rmdirs(tuner_algo_dir) 
-                    # self._conduct(tuner_algo_dir)
-            else:
+            if not os.path.exists(results_pkl):
                 self._conduct()
+                
+            try:# todo: use a same method to read the analysis to get the best_checkpoint_path and best_config
+                analysis = ExperimentAnalysis(tuner_algo_dir)
+                best_config = analysis.get_best_config(metric='val_acc', mode='max', scope='all')
+                # best_checkpoint = analysis.get_best_checkpoint(analysis.get_best_logdir(metric='val_acc', mode='max', scope = 'all'), metric='val_acc', mode='max')
+                best_trail = analysis.get_best_trial(metric='val_acc', mode='max', scope='all')
+                best_checkpoint = analysis.get_best_checkpoint(best_trail, metric='val_acc', mode='max')
+                self.best_checkpoint_path = os.path.join(best_checkpoint.path, 'model.pth')
+                self.best_config  = best_config
+                
+                torch.save(self.best_config, os.path.join(tuner_algo_dir, 'hyper.tuning.pt'))
+                
+            except:
+                raise ValueError('Error in loading the tuning results in {}\nPlease check the tuning results carefully, then remove it and rerun.'.format(tuner_algo_dir))
+                # raise SystemExit()
+                # os_rmdirs(tuner_algo_dir) 
+                # self._conduct(tuner_algo_dir)
+                
             # self.best_config = self._conduct()
         
         return self.best_config, self.best_checkpoint_path 
@@ -236,10 +239,10 @@ class HyperTuner(Opt):
         df.to_csv(os.path.join(self.tuner.dir, '{}.trial.csv'.format(self.algo_name)))
         ray.shutdown()
         
-        best_result = results.get_best_result(self.metric, 'max', scope='all')
-        self.best_config.merge(best_result.config)
-        self.best_result = best_result.metrics
-        self.best_checkpoint_path = os.path.join(best_result.checkpoint.path, 'model.pth')
+        # best_result = results.get_best_result(self.metric, 'max', scope='all')
+        # self.best_config.merge(best_result.config)
+        # # self.best_result = best_result.metrics
+        # self.best_checkpoint_path = os.path.join(best_result.checkpoint.path, 'model.pth')
       
     
 
