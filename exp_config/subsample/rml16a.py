@@ -62,7 +62,22 @@ class awn(AWN_base):
         self.tuning = Opt()
         self.tuning.merge({'inputMask_{}'.format(i) :  tune.choice([0,1]) for i in range(128)})
         
-
+class res(resnet_base):
+    def task_modify(self):
+        self.hyper.epochs = 100
+        self.hyper.batch_size = 1024
+        self.hyper.milestone_step = 1
+        self.hyper.patience = 20
+        self.hyper.pretraining_file ='/home/xinze/Documents/Github/OpenAMC/data/RML2016.10a/pretrain_models/RML2016.10a_ResNet.best.pt'
+        
+        self.tuner.num_samples = 200
+        self.tuner.resource = {"gpu": 0.5}
+        self.tuner.using_sched = False
+        self.tuner.min_training_iteration = 1
+        self.tuner.max_training_iteration = 1
+        self.tuning = Opt()
+        self.tuning.merge({'inputMask_{}'.format(i) :  tune.choice([0,1]) for i in range(128)})
+                
         
 if __name__ == "__main__":
     args = get_parser()
@@ -78,7 +93,7 @@ if __name__ == "__main__":
 
     args.test = True
     args.clean = True
-    args.exp_name = 'ICASSP24.amc.pretrain'
+    args.exp_name = 'ICASSP24.res.pretrain'
     # args.model = 'awn'
     
     
