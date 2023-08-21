@@ -55,7 +55,7 @@ class MaskTuner(HyperTuner):
         idx = [i for i in range(self.hyper.sig_len)]
         tags = ['inputMask_{}'.format(i) for i in range(self.hyper.sig_len)]
         
-        for mr in [0.05, 0.1, 0.15]:
+        for mr in [0.02, 0.03, 0.04, 0.05]:
             num = int(self.hyper.sig_len * mr)
             for t in range(4):
                 selected_idx = sample(idx, num)

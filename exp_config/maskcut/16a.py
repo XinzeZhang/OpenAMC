@@ -42,7 +42,7 @@ class amcnet(AMC_Net_base):
         self.tuner.using_sched = True
         self.tuner.min_training_iteration = 30
         self.tuner.max_training_iteration = 200
-        self.tuner.odd_check = False
+        self.tuner.odd_check = True
         
         self.tuning = Opt()
         self.tuning.merge({'inputMask_{}'.format(i) :  tune.choice([0,1]) for i in range(128)})
