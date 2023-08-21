@@ -7,26 +7,28 @@ import numpy as np
 from collections import Counter
 from tqdm import tqdm
 from task.base.TaskWrapper import Task
+from task.base.TaskLoader import Opt
 from task.TaskParser import get_parser
 from sklearn.metrics import accuracy_score, confusion_matrix, f1_score, cohen_kappa_score
 from task.util import os_makedirs, os_rmdirs, set_logger, fix_seed
 from task.base.TaskVisual import save_training_process, save_confmat, save_snr_acc
-from task.subsampling.pretrain.TaskTuner import maskTuner
+from task.maskcut.maskTuner import MaskTuner
+from task.maskcut.maskLoader import mask_count
 
-class subsamplingTask(Task):
+class maskcutTask(Task):
     def __init__(self, args):
         # self.opts = Opt()
         # self.opts.merge(args)
         super().__init__(args)
         
         
-    @staticmethod
-    def init_inputMask(cid_hyper = None):
-        for i in range(cid_hyper.sig_len):
+    
+    def init_inputMask(self, cid_hyper = None):
+        for i in range(self.data_opts.info.sig_len):
             if 'inputMask_{}'.format(i) not in cid_hyper.dict:
                 raise ValueError('Missing hyper config: "inputMask_{}"!'.format(i))
             
-        inputMask = [cid_hyper.dict['inputMask_{}'.format(i)] for i in range(cid_hyper.sig_len)]
+        inputMask = [cid_hyper.dict['inputMask_{}'.format(i)] for i in range(self.data_opts.info.sig_len)]
         
         return inputMask
         
@@ -47,8 +49,46 @@ class subsamplingTask(Task):
         test_sample_list, test_lable_list = self.data_opts.load_testset(test_batch_size = batch_size, mask_opt = self.inputMask)
         return test_sample_list, test_lable_list
 
+    def load_hyper(self, clogger):
+        clogger.critical('*'*80)
+        clogger.critical('Dataset: {}\t Model:{} \t Class: {}'.format(
+            self.data_name, self.model_name, self.data_opts.num_classes))
+        
+        cid_hyper = Opt(self.model_opts.hyper)
+        cid_hyper.num_classes = self.data_opts.num_classes
+        cid_hyper.model_fit_dir = self.model_fit_dir
+        cid_hyper.model_name = self.model_name
+        cid_hyper.data_name = self.data_name     
+        # cid_hyper.cid = i
+        
+        #toDo: set Tune, and loading the best parameters
+        if self.tune:
+            if 'best_hyper' not in self.dict:
+                self.tuning()
+                
+            best_hyper = self.best_hyper
+            cid_hyper.update(best_hyper)
+            clogger.info("Updating tuning result complete.")
+            clogger.critical('-'*80)
+            if self.best_checkpoint_path is not None:
+                cid_hyper.pretraining_file = self.best_checkpoint_path
+        
+        
+        self.inputMask = self.init_inputMask(cid_hyper)
+        cid_hyper.mask_num = mask_count(self.inputMask)
+        
+        cid_hyper.sig_len = self.data_opts.info.sig_len - cid_hyper.mask_num
+        cid_hyper.mask_ratio = cid_hyper.mask_num / self.data_opts.info.sig_len
+        
+        clogger.critical("Loading mask operator.")
+        clogger.critical('Overall Mask-ratio is: {:.2f}% \t Mask-num is: {} \t Remaining sig_len is: {}'.format(cid_hyper.mask_ratio * 100, cid_hyper.mask_num, cid_hyper.sig_len))
+        clogger.critical('-'*80)
+        
+        
+        return cid_hyper
+
     def load_tuner(self, logger):
-        series_tuner = maskTuner(self.model_opts, logger, self.data_opts)
+        series_tuner = MaskTuner(self.model_opts, logger, self.data_opts)
         return series_tuner
 
 
@@ -83,11 +123,7 @@ class subsamplingTask(Task):
             logger.critical('Save result file to the location: {}'.format(tgt_result_file))
             logger.critical('-'*80)   
             
-            inputStep_count = Counter(self.inputMask)
-            inputMask_Pos = inputStep_count[1]
-            mask_num = model.hyper.sig_len - inputMask_Pos
-            mask_ratio =  mask_num / model.hyper.sig_len
-            logger.info('Overall Mask-ratio is: {:.2f}% \t Mask-num is: {}'.format(mask_ratio * 100, mask_num))
+            logger.info('Overall Mask-ratio is: {:.2f}% \t Mask-num is: {}'.format(model.hyper.mask_ratio * 100, model.hyper.mask_num))
             
         return pre_lab_all, label_all
     
@@ -134,12 +170,9 @@ class subsamplingTask(Task):
         kappa = cohen_kappa_score(label_all, pre_lab_all)
         acc = np.mean(Accuracy_list)
         
-        
-        inputStep_count = Counter(self.inputMask)
-        inputMask_Pos = inputStep_count[1]
-        mask_num = self.data_opts.info.sig_len - inputMask_Pos
+        mask_num = mask_count(self.inputMask)
         mask_ratio =  mask_num / self.data_opts.info.sig_len 
-        eLogger.info('Overall Mask-ratio is: {:.2f}% \t Mask-num is: {}'.format(mask_ratio * 100, mask_num))
+        eLogger.info('Overall Mask-ratio is: {:.2f}% \t Mask-num is: {} \t Remaining sig_len is: {}'.format(mask_ratio * 100, mask_num, self.data_opts.info.sig_len - mask_num))
         eLogger.info('Overall Accuracy is: {:.2f}%'.format(acc * 100))
         eLogger.info(f'Macro F1-score is: {F1_score:.4f}')
         eLogger.info(f'Kappa Coefficient is: {kappa:.4f}')
@@ -160,8 +193,8 @@ if __name__ == "__main__":
     args = get_parser()
     args.cuda = True
     
-    args.exp_config = 'exp_config/subsample'
-    args.exp_file= 'rml16a'
+    args.exp_config = 'exp_config/maskcut'
+    args.exp_file= '16a'
     args.force_update = True
     args.gid = 0
     
@@ -171,7 +204,7 @@ if __name__ == "__main__":
     args.model = 'awn'
     
     
-    task = subsamplingTask(args)
+    task = maskcutTask(args)
     task.tuning()
     task.conduct()
     # task.evaluate(force_update=True)     

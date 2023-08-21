@@ -191,7 +191,31 @@ class Task(Opt):
         else:
             self.evaluate()
   
-            
+    def load_hyper(self, clogger):
+        clogger.critical('*'*80)
+        clogger.critical('Dataset: {}\t Model:{} \t Class: {}'.format(
+            self.data_name, self.model_name, self.data_opts.num_classes))
+        
+        cid_hyper = Opt(self.model_opts.hyper)
+        cid_hyper.num_classes = self.data_opts.num_classes
+        cid_hyper.model_fit_dir = self.model_fit_dir
+        cid_hyper.model_name = self.model_name
+        cid_hyper.data_name = self.data_name     
+        # cid_hyper.cid = i
+        
+        #toDo: set Tune, and loading the best parameters
+        if self.tune:
+            if 'best_hyper' not in self.dict:
+                self.tuning()
+                
+            best_hyper = self.best_hyper
+            cid_hyper.update(best_hyper)
+            clogger.info("Updating tuning result complete.")
+            clogger.critical('-'*80)
+            if self.best_checkpoint_path is not None:
+                cid_hyper.pretraining_file = self.best_checkpoint_path
+        
+        return cid_hyper
 
     def conduct_fit(self, clogger = None, result_file = None):
         try:
@@ -199,31 +223,7 @@ class Task(Opt):
                 clogger = self.logger_config(
                     self.model_fit_dir, 'train')
                         
-            clogger.critical('*'*80)
-            clogger.critical('Dataset: {}\t Model:{} \t Class: {}'.format(
-                self.data_name, self.model_name, self.data_opts.num_classes))
-            
-            cid_hyper = Opt(self.model_opts.hyper)
-            cid_hyper.num_classes = self.data_opts.num_classes
-            cid_hyper.model_fit_dir = self.model_fit_dir
-            cid_hyper.model_name = self.model_name
-            cid_hyper.data_name = self.data_name     
-            # cid_hyper.cid = i
-            
-            #toDo: set Tune, and loading the best parameters
-            if self.tune:
-                if 'best_hyper' not in self.dict:
-                    self.tuning()
-                    
-                best_hyper = self.best_hyper
-                cid_hyper.update(best_hyper)
-                clogger.info("Updating tuning result complete.")
-                clogger.critical('-'*80)
-                if self.best_checkpoint_path is not None:
-                    cid_hyper.pretraining_file = self.best_checkpoint_path
-
-            
-
+            cid_hyper = self.load_hyper(clogger)
             train_loader, val_loader = self.load_fitset(cid_hyper)
             clogger.critical('Loading training set and validation set.')
             clogger.info(f'Fit batch size: {train_loader.batch_size}')

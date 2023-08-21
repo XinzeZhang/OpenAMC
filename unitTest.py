@@ -91,3 +91,14 @@ print(b)
 for key in a.keys():
     print(key)
 # %%
+from collections import Counter
+
+inputMask = [0, 1, 0, 1, 1, 1]
+inputStep_count = Counter(inputMask)
+inputMask_Pos = inputStep_count[1]
+Neg = inputStep_count[0]
+
+print(inputStep_count)
+print(inputMask_Pos)
+print(Neg)
+# %%

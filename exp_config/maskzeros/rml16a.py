@@ -8,10 +8,10 @@ import torch
 import numpy as np
 import pickle
 from task.base.TaskLoader import Opt 
-from task.subsampling.TaskWrapper import subsamplingTask
+from task.maskzeros.TaskWrapper import subsamplingTask
 from task.TaskParser import get_parser
 from data.RML201610a import RML2016_10a_Data
-from task.subsampling.TaskLoader import subSamplingDataset
+from task.maskzeros.TaskLoader import subSamplingDataset
 
 class Data(subSamplingDataset, RML2016_10a_Data):
     def __init__(self, opts):

@@ -34,7 +34,7 @@ import importlib
 
 from task.util import os_rmdirs,set_logger,set_fitset
 from task.base.TaskTuner import HyperTuner
-from task.subsampling.TaskLoader import mask_zeros
+from task.maskzeros.TaskLoader import mask_zeros
 from random import sample
 
 def trial_str_creator(trial):

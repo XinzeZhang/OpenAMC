@@ -34,13 +34,14 @@ import importlib
 
 from task.util import os_rmdirs,set_logger,set_fitset
 from task.base.TaskTuner import HyperTuner
-from task.subsampling.TaskLoader import mask_zeros
+from task.maskcut.maskLoader import mask_cutout, mask_count
 from random import sample
+import numpy as np
 
 def trial_str_creator(trial):
     return "{}_{}".format(trial.trainable_name, trial.trial_id)
 
-class maskTuner(HyperTuner):
+class MaskTuner(HyperTuner):
     def __init__(self, opts = None, logger= None, subPack = None):
         super().__init__(opts, logger, subPack)
 
@@ -54,9 +55,9 @@ class maskTuner(HyperTuner):
         idx = [i for i in range(self.hyper.sig_len)]
         tags = ['inputMask_{}'.format(i) for i in range(self.hyper.sig_len)]
         
-        for mr in [0.05, 0.1, 0.15, 0.2]:
+        for mr in [0.05, 0.1, 0.15]:
             num = int(self.hyper.sig_len * mr)
-            for t in range(2):
+            for t in range(4):
                 selected_idx = sample(idx, num)
                 new_config = config.copy()
                 for s_idx in selected_idx:
@@ -71,7 +72,9 @@ class maskTuner(HyperTuner):
         func_data = Opt()
         # func_data.logger = self.logger
         func_data.merge(self,['hyper', 'import_path', 'class_name', 'trainer_module'])
-        func_data.merge(self.subPack, ['train_set', 'val_set'])
+        func_data.merge(self.subPack, ['train_set', 'val_set', 'sig_len'])
+        odd_check = True if 'odd_check' in self.tuner.dict and self.tuner.odd_check else False
+        func_data.odd_check = odd_check
         
         # ray.init(num_cpus=self.tuner.num_cpus)
         os.environ['RAY_COLOR_PREFIX'] = '1'
@@ -103,8 +106,7 @@ class maskTuner(HyperTuner):
                 verbose=1,
                 failure_config=FailureConfig(max_failures=self.tuner.num_samples // 2),
                 stop={'training_iteration':self.tuner.max_training_iteration,
-                    #   'stop_counter': self.hyper.patience
-                      },
+                      'stop_counter': self.hyper.patience},
                 checkpoint_config=CheckpointConfig(
                     num_to_keep=3,
                     checkpoint_score_attribute ='val_acc',
@@ -139,6 +141,7 @@ class maskTuningCell(tune.Trainable):
         self.import_path = data.import_path
         self.class_name = data.class_name
         # self.logger = data.logger
+        self.odd_check = data.odd_check
         
         logger_path = os.path.join(self.logdir, '{}.log'.format(self.class_name))
         self.logger = set_logger(logger_path, f'{self.class_name}.tuning', rewrite=False)
@@ -156,12 +159,22 @@ class maskTuningCell(tune.Trainable):
             if 'inputMask_{}'.format(i) not in _hyper.dict:
                 raise ValueError('Missing hyper config: "inputMask_{}"!'.format(i))
             
-        inputMask = [_hyper.dict['inputMask_{}'.format(i)] for i in range(_hyper.sig_len)]
+        self.inputMask = [_hyper.dict['inputMask_{}'.format(i)] for i in range(data.sig_len)]
         
-        train_set = mask_zeros(data.train_set, inputMask)
-        val_set = mask_zeros(data.val_set, inputMask)
+        self.sample_hyper.mask_num = mask_count(self.inputMask)
+        self.sample_hyper.sig_len = data.sig_len - self.sample_hyper.mask_num
+        self.sample_hyper.mask_ratio = self.sample_hyper.mask_num / data.sig_len  
+        
+        self.mask_constrain()
+        
+        train_set = mask_cutout(data.train_set, self.inputMask)
+        val_set = mask_cutout(data.val_set, self.inputMask)
         
         train_loader, val_loader = set_fitset(batch_size=_hyper.batch_size, train_set=train_set, val_set=val_set)
+
+        self.logger.critical("Loading mask operator.")
+        self.logger.critical('Overall Mask-ratio is: {:.2f}% \t Mask-num is: {} \t Remaining sig_len is: {}'.format(self.sample_hyper.mask_ratio * 100, self.sample_hyper.mask_num, self.sample_hyper.sig_len))
+        self.logger.critical('-'*80)
         
         self.logger.critical('Loading training set and validation set.')
         self.logger.info(f"Train_loader batch: {len(train_loader)}")
@@ -181,29 +194,63 @@ class maskTuningCell(tune.Trainable):
         trainer = importlib.import_module(data.trainer_module[0])
         trainer = getattr(trainer, data.trainer_module[1])
         
-        self.logger.info(f'Finding pretraining file in the location {self.sample_hyper.pretraining_file}')
-        sample_model.load_pretraing_file(file_path=self.sample_hyper.pretraining_file)
-        
         self.trainer = trainer(sample_model, train_loader, val_loader, self.base_hyper, self.logger)
         # self.trainer.cfg.patience = self.trainer.cfg.epochs # Actually, in TuningCell, patience does not work as the same as in trainer.
         self.trainer.before_train()
     
-    def step(self,):
-        self.trainer.before_val_step()
-        for step, (sig_batch, lab_batch) in enumerate(self.trainer.val_loader):
-            with torch.no_grad():
-                sig_batch = sig_batch.to(self.trainer.cfg.device)
-                lab_batch = lab_batch.to(self.trainer.cfg.device)
-
-                loss, acc = self.trainer.cal_loss_acc(sig_batch, lab_batch)
-                self.trainer.val_acc.update(acc)
+    def mask_constrain(self, max_ratio = 0.5):
+        '''If mask_ratio > max_ratio, random select mask idx to set as 1 to make mask_ratio be decresed to max_ratio
+        '''
+        total_sig_len = self.sample_hyper.mask_num + self.sample_hyper.sig_len
         
-        v_acc = self.trainer.val_acc.avg
-        self.logger.info('Val Acc: {:.3f}%'.format(v_acc * 100 ))
+        if self.odd_check:
+            if self.sample_hyper.mask_num % 2 != 0:
+                pso_ids = [i for i,v in enumerate(self.inputMask) if v == 1]
+                rev_id = sample(pso_ids, 1)[0]
+                self.inputMask[rev_id] = 0
+                self.sample_hyper.dict['inputMask_{}'.format(rev_id)] = 0
+                
+                self.sample_hyper.mask_num += 1
+                self.sample_hyper.sig_len -= 1
+                self.sample_hyper.mask_ratio = self.sample_hyper.mask_num / total_sig_len 
+        
+        max_num = int(total_sig_len * max_ratio)
+        if self.sample_hyper.mask_ratio > max_ratio:
+            neg_ids = [i for i,v in enumerate(self.inputMask) if v == 0]
+            fill_num = self.sample_hyper.mask_num - max_num
+            rev_ids = np.random.choice(neg_ids, size = fill_num, replace = False).tolist()
+            
+            for id in rev_ids:
+                self.inputMask[id] = 1
+                self.sample_hyper.dict['inputMask_{}'.format(id)] = 1
+            
+            # update sample_hyper
+            self.inputMask = [self.sample_hyper.dict['inputMask_{}'.format(i)] for i in range(total_sig_len)]
+            
+            self.sample_hyper.mask_num = mask_count(self.inputMask)
+            self.sample_hyper.sig_len = total_sig_len - self.sample_hyper.mask_num
+            self.sample_hyper.mask_ratio = self.sample_hyper.mask_num / total_sig_len  
+        
+        
+            
+    
+    def step(self,):
+        self.trainer.before_train_step()
+        _, t_acc = self.trainer.run_train_step(ray=True)
+        self.trainer.after_train_step()
+        self.trainer.before_val_step()
+        _, v_acc = self.trainer.run_val_step(ray=True)
+        self.trainer.after_val_step(checkpoint = False)
+        self.trainer.iter += 1      
+        
+        best_acc =  self.trainer.best_monitor
         
         return {
+            'mask_ratio': self.sample_hyper.mask_ratio,
+            'tra_acc': t_acc,
             'val_acc': v_acc,
-            'best_val_acc': v_acc * 100, 
+            'best_val_acc': best_acc * 100, 
+            'stop_counter': self.trainer.early_stopping.counter,
         }
     
     def save_checkpoint(self, tmp_checkpoint_dir):
