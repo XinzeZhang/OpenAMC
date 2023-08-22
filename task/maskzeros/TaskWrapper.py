@@ -87,7 +87,7 @@ class subsamplingTask(Task):
             inputMask_Pos = inputStep_count[1]
             mask_num = model.hyper.sig_len - inputMask_Pos
             mask_ratio =  mask_num / model.hyper.sig_len
-            logger.info('Overall Mask-ratio is: {:.2f}% \t Mask-num is: {}'.format(mask_ratio * 100, mask_num))
+            # logger.info('Overall Mask-ratio is: {:.2f}% \t Mask-num is: {}'.format(mask_ratio * 100, mask_num))
             
         return pre_lab_all, label_all
     

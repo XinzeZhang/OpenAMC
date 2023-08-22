@@ -284,6 +284,7 @@ class Task(Opt):
             pre_lab_all = []
             label_all = []
             
+            # loop of SNRs in test_sample_list
             for (Sample, Label) in tqdm(zip(test_sample_list, test_lable_list), total=len(test_sample_list)):
                 pred_i = []
                 label_i = []

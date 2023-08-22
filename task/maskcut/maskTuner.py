@@ -123,10 +123,10 @@ class MaskTuner(HyperTuner):
         df.to_csv(os.path.join(self.tuner.dir, '{}.trial.csv'.format(self.algo_name)))
         ray.shutdown()
         
-        best_result = results.get_best_result(self.metric, 'max', scope='all')
-        self.best_config.merge(best_result.config)
-        self.best_result = best_result.metrics
-        self.best_checkpoint_path = os.path.join(best_result.checkpoint.path, 'model.pth')
+        # best_result = results.get_best_result(self.metric, 'max', scope='all')
+        # self.best_config.merge(best_result.config)
+        # self.best_result = best_result.metrics
+        # self.best_checkpoint_path = os.path.join(best_result.checkpoint.path, 'model.pth')
       
     
 
@@ -207,7 +207,7 @@ class maskTuningCell(tune.Trainable):
         if self.sample_hyper.mask_num == 0:
             rev_ids = sample([i for i in range(total_sig_len)], 2)
             for id in rev_ids:
-                self.inputMask[rev_ids] = 0
+                self.inputMask[id] = 0
             
             self.sample_hyper.mask_num += 2
             self.sample_hyper.sig_len -= 2

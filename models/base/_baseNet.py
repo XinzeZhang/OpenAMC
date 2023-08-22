@@ -7,9 +7,11 @@ import torch.nn as nn
 import math
 import torch.nn.functional as F
 import copy
+import numpy as np
+from tqdm import tqdm
 
 from models.base._baseTrainer import Trainer
-
+from sklearn.metrics import accuracy_score
 
 class BaseNet(nn.Module):
     def __init__(self, hyper = None, logger = None):
@@ -67,6 +69,16 @@ class BaseNet(nn.Module):
             self.load_pretraing_file(file_path=self.hyper.pretraining_file)
             pretraining_tag = True
         
+            self.logger.critical('>'*40)
+            self.logger.critical('Evaluation on the training set.')
+            acc = self.loader_predict(train_loader)
+            self.logger.critical('Overall Training Accuracy is: {:.2f}%'.format(acc * 100))
+            
+            self.logger.critical('>'*40)
+            self.logger.critical('Evaluation on the validation set.')
+            acc = self.loader_predict(val_loader)
+            self.logger.critical('Overall Validation Accuracy is: {:.2f}%'.format(acc * 100))
+        
         if pretraining_tag is False:
             fit_info = self._xfit(train_loader, val_loader)
             
@@ -82,6 +94,26 @@ class BaseNet(nn.Module):
         fit_info = net_trainer.epochs_stats
         
         return fit_info
+
+    def loader_predict(self, data_loader):
+        self.eval()
+        pre_lab_all = []
+        label_all = []
+        for step, (sig_batch, lab_batch) in tqdm(enumerate(data_loader), total=len(data_loader)):
+            pre_lab = self.predict(sig_batch)
+            pre_lab_all.append(pre_lab)
+            label_all.append(lab_batch)
+                
+        pre_lab_all = np.concatenate(pre_lab_all)
+        label_all = np.concatenate(label_all)        
+        acc = accuracy_score(label_all, pre_lab_all)
+        return acc
+        
+                # loss, acc = self.cal_loss_acc(sig_batch, lab_batch)
+
+                # self.val_loss.update(loss.item())
+                # self.val_acc.update(acc)
+        
 
     def predict(self, sample):
         """

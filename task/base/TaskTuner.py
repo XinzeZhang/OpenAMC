@@ -170,8 +170,18 @@ class HyperTuner(Opt):
                 best_config = analysis.get_best_config(metric='val_acc', mode='max', scope='all')
                 # best_checkpoint = analysis.get_best_checkpoint(analysis.get_best_logdir(metric='val_acc', mode='max', scope = 'all'), metric='val_acc', mode='max')
                 best_trail = analysis.get_best_trial(metric='val_acc', mode='max', scope='all')
+                
                 best_checkpoint = analysis.get_best_checkpoint(best_trail, metric='val_acc', mode='max')
                 self.best_checkpoint_path = os.path.join(best_checkpoint.path, 'model.pth')
+                
+                best_trail_dir = best_trail.local_path 
+                _best_trail_dir = analysis.get_best_logdir(metric='val_acc', mode='max', scope='all')
+                assert best_trail_dir == _best_trail_dir
+                
+                best_config_path = os.path.join(best_trail_dir , 'hyper.pt')
+                if os.path.exists(best_config_path):
+                    best_config = torch.load(best_config_path)
+                
                 self.best_config  = best_config
                 
                 torch.save(self.best_config, os.path.join(tuner_algo_dir, 'hyper.tuning.pt'))

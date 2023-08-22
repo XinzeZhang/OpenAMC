@@ -102,3 +102,19 @@ print(inputStep_count)
 print(inputMask_Pos)
 print(Neg)
 # %%
+import torch,os
+from task.base.TaskLoader import Opt
+
+hyper = Opt()
+config = {'inputMask_{}'.format(i) :  1 for i in range(128)}
+
+hyper.merge(config)
+hyper.dict['inputMask_127'] = 0
+hyper.dict['inputMask_79'] = 0
+
+tuner_algo_dir = 'exp_tempTest/RML2016.10a/ICASSP24.amcnet.maskcut/fit/amcnet/tuner/tpe/maskTuningCell_46bf3957'
+
+torch.save(hyper, os.path.join(tuner_algo_dir, 'hyper.pt'))
+
+
+# %%

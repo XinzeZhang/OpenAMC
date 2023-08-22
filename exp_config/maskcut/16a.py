@@ -101,7 +101,7 @@ if __name__ == "__main__":
 
     args.test = True
     args.clean = False
-    args.model = 'awn'
+    args.model = 'amcnet'
     args.exp_name = f'ICASSP24.{args.model}.maskcut'
     
     

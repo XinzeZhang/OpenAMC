@@ -123,7 +123,7 @@ class maskcutTask(Task):
             logger.critical('Save result file to the location: {}'.format(tgt_result_file))
             logger.critical('-'*80)   
             
-            logger.info('Overall Mask-ratio is: {:.2f}% \t Mask-num is: {}'.format(model.hyper.mask_ratio * 100, model.hyper.mask_num))
+            # logger.info('Overall Mask-ratio is: {:.2f}% \t Mask-num is: {}'.format(model.hyper.mask_ratio * 100, model.hyper.mask_num))
             
         return pre_lab_all, label_all
     
