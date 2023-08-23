@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from models.base._baseNet import BaseNet
-
+from models.base._baseTrainer import AnnealingTrainer
 
 class Subsampling_ResNet(BaseNet):
     '''
@@ -71,6 +71,13 @@ class Subsampling_ResNet(BaseNet):
                 nn.init.constant_(m.bias, 0)
             elif isinstance(m, nn.Linear):
                 nn.init.kaiming_normal_(m.weight)
+
+    def _xfit(self, train_loader, val_loader):
+        net_trainer = AnnealingTrainer(self, train_loader, val_loader, self.hyper, self.logger)
+        net_trainer.loop()
+        fit_info = net_trainer.epochs_stats
+        return fit_info   
+    
 
 class Res_Stack(nn.Module):
     def __init__(self, input_dim, output_dim = 32):
