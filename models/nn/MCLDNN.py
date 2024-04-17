@@ -5,7 +5,7 @@ import torch.nn.functional as F
 # from model.base_model import BaseModel
 from models.base._baseNet import BaseNet
 import os
-from models.base._baseTrainer import Trainer, EarlyStopping
+from models.base._baseTrainer import AnnealingTrainer, EarlyStopping,Trainer
 import time
 import pandas as pd
 from torch import optim, nn
@@ -111,7 +111,7 @@ class MCLDNN(BaseNet):
         return out 
     
     def _xfit(self, train_loader, val_loader):
-        net_trainer = MCLDNN_Trainer2(self, train_loader, val_loader, self.hyper, self.logger)
+        net_trainer = AnnealingTrainer(self, train_loader, val_loader, self.hyper, self.logger)
         net_trainer.loop()
         fit_info = net_trainer.epochs_stats
         return fit_info    
