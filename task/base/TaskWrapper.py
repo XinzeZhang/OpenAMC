@@ -5,7 +5,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), os.path.pardir))
 from tqdm.std import tqdm
 import importlib
 
-from task.base.TaskLoader import Opt
+from task.util import Opt
 from task.TaskParser import get_parser
 
 import torch
@@ -56,7 +56,7 @@ class Task(Opt):
                                  args.model)
         else:
             try:
-                share_module_path = importlib.import_module('models.base._baseSetting')
+                share_module_path = importlib.import_module('exp_config._baseSetting')
                 model_opts = getattr(
                     share_module_path, self.model_name + '_base')
             except:
@@ -81,12 +81,14 @@ class Task(Opt):
             self.device_id = -1
 
 
-        self.exp_dir = 'exp_results' if args.test == False else 'exp_tempTest'
-
-        self.exp_dir = os.path.join(self.exp_dir, self.data_name)
-        
-        if args.exp_name is not None:
-            self.exp_dir = os.path.join(self.exp_dir, args.exp_name)
+        if 'exp_dir' in vars(args) and args.exp_dir is not None:
+            self.exp_dir = args.exp_dir
+        else:
+            self.exp_dir = 'Exp_results' if args.test == False else 'Exp_Test'
+            self.exp_dir = os.path.join(self.exp_dir, self.data_name )
+    
+            assert 'exp_name' in vars(args)
+            self.exp_dir = os.path.join(self.exp_dir, args.exp_name)   
 
         self.fit_dir = os.path.join(self.exp_dir, 'fit')
         self.eval_dir = os.path.join(self.exp_dir, 'eval')
@@ -307,7 +309,7 @@ class Task(Opt):
         return pre_lab_all, label_all
 
     def evaluate(self, elogger = None, force_update=False, ave_confMax = False):
-        eLogger = set_logger(os.path.join(self.eval_dir, '{}.{}.eval.log'.format(self.data_name, self.model_name)), '{}.{}'.format(
+        eLogger = set_logger(os.path.join(self.eval_dir, '_log_', '{}.{}.eval.log'.format(self.data_name, self.model_name)), '{}.{}'.format(
                 self.data_name, self.model_name.upper()), self.logger_level) if elogger is None else elogger
         
         if self.data_statue is False:

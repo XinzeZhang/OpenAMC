@@ -18,7 +18,7 @@ def save_training_process(epochs_stats, plot_dir):
     # plt.ylabel("lr")
     # plt.title("learning rate")
     # plt.grid()
-    # fig1.savefig(os.path.join(plot_dir, 'lr.svg'), format='svg', dpi=150)
+    # fig1.savefig(os.path.join(plot_dir, 'lr.png'), format='png', dpi=300)
     # plt.close()
 
     fig2 = plt.figure(figsize=(18, 4))
@@ -49,7 +49,7 @@ def save_training_process(epochs_stats, plot_dir):
     plt.legend()
     plt.grid()
     
-    fig2.savefig(os.path.join(plot_dir,'loss_acc.svg'), format='svg', dpi=150)
+    fig2.savefig(os.path.join(plot_dir,'loss_acc.png'), dpi=300)
     plt.show()
     plt.close()
 
@@ -69,7 +69,7 @@ def save_confmat(Confmat_Set, num_snrs, classes, plot_dir ):
         plt.xlabel('Predicted label')
         conf_mat_dir = os.path.join(plot_dir, 'conf_mat')
         os.makedirs(conf_mat_dir, exist_ok=True)
-        fig.savefig(conf_mat_dir + '/' + f'ConfMat_{snr}dB.svg', format='svg', dpi=150)
+        fig.savefig(conf_mat_dir + '/' + f'ConfMat_{snr}dB.png', dpi=300)
         plt.close()
         
 def save_snr_acc(Accuracy_list, Confmat_Set, num_snrs, data_name, class_names, plot_dir):
@@ -81,7 +81,7 @@ def save_snr_acc(Accuracy_list, Confmat_Set, num_snrs, data_name, class_names, p
     plt.grid()
     acc_dir = os.path.join(plot_dir, 'acc')
     os.makedirs(acc_dir, exist_ok=True)
-    plt.savefig(acc_dir + '/' + 'acc.svg', format='svg', dpi=150)
+    plt.savefig(acc_dir + '/' + 'acc.png', dpi=300)
     plt.close()
 
     Accuracy_Mods = np.zeros((len(num_snrs), Confmat_Set.shape[-1]))
@@ -97,7 +97,7 @@ def save_snr_acc(Accuracy_list, Confmat_Set, num_snrs, data_name, class_names, p
     plt.title(f"Overall Accuracy on {data_name} dataset")
     plt.grid()
     plt.legend(class_names)
-    plt.savefig(acc_dir + '/' + 'acc_mods.svg', format='svg', dpi=150)
+    plt.savefig(acc_dir + '/' + 'acc_mods.png', dpi=300)
     plt.close()
     
     return Accuracy_Mods

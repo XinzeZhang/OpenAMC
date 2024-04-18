@@ -5,51 +5,7 @@ import torch
 import torch.utils.data as Data
 import os
 from task.util import set_fitset
-
-class Opt(object):
-    def __init__(self, init=None):
-        super().__init__()
-
-        if init is not None:
-            self.merge(init)
-
-    def merge(self, opts, ele_s=None):
-        '''
-        Only merge the key-value not in the current Opt.\n
-        Using ele_s to select the element in opts to be merged.
-        '''
-        if isinstance(opts, Mapping):
-            new = opts
-        else:
-            assert isinstance(opts, object)
-            new = vars(opts)
-
-        if ele_s is None:
-            for key in new:
-                if not key in self.dict:
-                    self.dict[key] = copy.copy(new[key])
-        else:
-            for key in ele_s:
-                if not key in self.dict:
-                    self.dict[key] = copy.copy(new[key])
-
-    def update(self, opts, ignore_unk=False):
-        if isinstance(opts, Mapping):
-            new = opts
-        else:
-            assert isinstance(opts, object)
-            new = vars(opts)
-        for key in new:
-            if not key in self.dict and ignore_unk is False:
-                raise ValueError(
-                    "Unknown config key '{}'".format(key))
-            self.dict[key] = copy.copy(new[key])
-
-    @property
-    def dict(self):
-        '''Gives dict-like access to Params instance by params.dict['learning_rate']'''
-        return self.__dict__
-
+from task.util import Opt
 
 class TaskDataset(Opt):
     """
@@ -121,6 +77,8 @@ class TaskDataset(Opt):
                 self.train_set =split_data['train_set']
                 self.test_set = split_data['test_set']
                 self.val_set = split_data['val_set']
+                self.train_idx = split_data['train_idx']
+                self.val_idx = split_data['val_idx']
                 self.test_idx = split_data['test_idx']
                 self.SNRs = split_data['SNRs']
                 self.snrs = split_data['snrs']
@@ -142,16 +100,18 @@ class TaskDataset(Opt):
                 logger.info(f'Using the random seed: {self.info.seed}')
                 logger.info('Split the dataset to training set, validation set, and test set with the ration of {:.2f}, {:.2f}, and {:.2f}'.format(1- self.test_size - self.val_size, self.val_size, self.test_size))
             
-            self.train_set, self.val_set, self.test_set, self.test_idx = self.dataset_Split(Signals=Signals, Labels=Labels, snrs=self.snrs, mods=self.mods, val_size=self.val_size,test_size=self.test_size)
+            self.train_set, self.val_set, self.test_set, self.train_idx, self.val_idx, self.test_idx = self.dataset_Split(Signals=Signals, Labels=Labels, snrs=self.snrs, mods=self.mods, val_size=self.val_size,test_size=self.test_size)
             
             torch.save({
             'train_set': self.train_set,
             'test_set': self.test_set,
             'val_set': self.val_set,
+            'train_idx': self.train_idx,
+            'val_idx': self.val_idx,
             'test_idx': self.test_idx,
             'SNRs': self.SNRs,
             'snrs': self.snrs,
-            'mods':  self.mods  
+            'mods':  self.mods
             }, self.info.post_data_file
             )
         return self.train_set, self.val_set, self.test_set, self.test_idx
@@ -208,8 +168,23 @@ class TaskDataset(Opt):
         return (Signals_train, Labels_train), \
             (Signals_val, Labels_val), \
             (Signals_test, Labels_test), \
-            test_idx
+            train_idx, val_idx, test_idx
 
+    @staticmethod
+    def snr_slice(data_set, set_idx, SNRs = None, snr = 0):
+        Signals, Labels = data_set
+        
+        data_SNRs = map(lambda x: SNRs[x], set_idx)
+        data_SNRs = list(data_SNRs)
+        data_SNRs = np.array(data_SNRs).squeeze()
+        idx_i = np.where(np.array(data_SNRs) == snr)
+        sig_i = Signals[idx_i]
+        lab_i = Labels[idx_i]
+
+        idx_i = idx_i[0]
+        
+        return sig_i, lab_i, idx_i
+    
 
     def load_fitset(self, fit_batch_size = None):
         _fit_batch_size = fit_batch_size if fit_batch_size is not None else self.batch_size
@@ -218,24 +193,21 @@ class TaskDataset(Opt):
         return train_loader, val_loader
     
     def load_testset(self, test_batch_size = 64):
-        Signals_test, Labels_test = self.test_set
-        
+
         Sample_list = []
         Label_list = []
         
         if 'num_snrs' not in self.dict:
             self.num_snrs = list(np.unique(self.snrs))
         
-        
         for snr in self.num_snrs:
-            test_SNRs = map(lambda x: self.SNRs[x], self.test_idx)
-            test_SNRs = list(test_SNRs)
-            test_SNRs = np.array(test_SNRs).squeeze()
-            test_sig_i = Signals_test[np.where(np.array(test_SNRs) == snr)]
-            test_lab_i = Labels_test[np.where(np.array(test_SNRs) == snr)]
-            Sample = torch.chunk(test_sig_i, test_batch_size, dim=0)
-            Label = torch.chunk(test_lab_i, test_batch_size, dim=0)
+            sig_i, lab_i, _ = self.snr_slice(data_set = self.test_set,set_idx = self.test_idx, snr=snr, SNRs=self.SNRs)
+
+            num_chunk = int(sig_i.shape[0] / test_batch_size)
             
+            Sample = torch.chunk(sig_i, num_chunk, dim=0)
+            Label = torch.chunk(lab_i, num_chunk, dim=0)  
+
             Sample_list.append(Sample)
             Label_list.append(Label)
         

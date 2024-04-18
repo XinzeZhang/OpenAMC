@@ -6,7 +6,7 @@ import torch
 import torch.utils.data as Data
 
 import ray
-from task.base.TaskLoader import Opt
+from task.util import Opt
 # from ray.tune.suggest.bohb import TuneBOHB
 # from ray.tune.schedulers import HyperBandForBOHB
 from ray.tune.schedulers import ASHAScheduler
@@ -36,7 +36,7 @@ from task.util import os_rmdirs,set_logger,set_fitset
 
 
 class HyperTuner(Opt):
-    def __init__(self, opts = None, logger= None, subPack = None):
+    def __init__(self, opts = None, logger= None, data_opts = None):
         super().__init__()
 
         if opts is not None:
@@ -47,11 +47,11 @@ class HyperTuner(Opt):
         
         self.logger = logger
         
-        # train_loader, val_loader = subPack.load_fitset()
-        # self.batch_size = subPack.batch_size
-        self.subPack = subPack
-        # self.train_data = subPack.train_set
-        # self.valid_data = subPack.val_set
+        # train_loader, val_loader = data_opts.load_fitset()
+        # self.batch_size = data_opts.batch_size
+        self.data_opts = data_opts
+        # self.train_data = data_opts.train_set
+        # self.valid_data = data_opts.val_set
         
         self.metric = 'best_val_acc'
         if 'num_samples' not in self.tuner.dict:
@@ -142,7 +142,7 @@ class HyperTuner(Opt):
         model = getattr(model, self.class_name)
         model = model(_hyper, self.logger)
         
-        train_loader, val_loader = self.subPack.load_fitset(_hyper.batch_size)
+        train_loader, val_loader = self.data_opts.load_fitset(_hyper.batch_size)
         fit_info = model.xfit(train_loader, val_loader)
         t_acc, v_acc = fit_info.train_acc.max(), fit_info.val_acc.max()   
         
@@ -174,9 +174,9 @@ class HyperTuner(Opt):
                 best_checkpoint = analysis.get_best_checkpoint(best_trail, metric='val_acc', mode='max')
                 self.best_checkpoint_path = os.path.join(best_checkpoint.path, 'model.pth')
                 
-                best_trail_dir = best_trail.local_path 
-                _best_trail_dir = analysis.get_best_logdir(metric='val_acc', mode='max', scope='all')
-                assert best_trail_dir == _best_trail_dir
+                best_trail_dir = analysis.get_best_logdir(metric='val_acc', mode='max', scope='all')
+                # _best_trail_dir = best_trail.local_path 
+                # assert best_trail_dir == _best_trail_dir # Test Pass
                 
                 best_config_path = os.path.join(best_trail_dir , 'hyper.pt')
                 if os.path.exists(best_config_path):
@@ -196,12 +196,17 @@ class HyperTuner(Opt):
         
         return self.best_config, self.best_checkpoint_path 
 
-    def _conduct(self,):
-        
+    def pack_data(self,):
         func_data = Opt()
         # func_data.logger = self.logger
         func_data.merge(self,['hyper', 'import_path', 'class_name', 'trainer_module'])
-        func_data.merge(self.subPack, ['train_set', 'val_set'])
+        func_data.merge(self.data_opts, ['train_set', 'val_set'])
+        return func_data
+
+    def _conduct(self,):
+        
+        func_data = self.pack_data()
+        # func_data.logger = self.logger
         
         # ray.init(num_cpus=self.tuner.num_cpus)
         os.environ['RAY_COLOR_PREFIX'] = '1'
@@ -243,7 +248,7 @@ class HyperTuner(Opt):
         
         results = tuner.fit() 
         # https://docs.ray.io/en/latest/tune/tutorials/tune-output.html?highlight=tensorboard#where-to-find-log-to-file-files
-        # to see this,  using:  tensorboard --logdir /home/xinze/Documents/Github/OpenAMC/exp_tempTest/RML2016.10a/tuning.mcl/fit/mcl/tuner/tpe --host 192.168.80.XXX
+        # to see this,  using:  tensorboard --logdir /home/xinze/Documents/Github/PrivateAMC/Exp_Test/RML2016.10a/tuning.mcl/fit/mcl/tuner/tpe --host 192.168.80.XXX
         
         df = results.get_dataframe()
         df.to_csv(os.path.join(self.tuner.dir, '{}.trial.csv'.format(self.algo_name)))
