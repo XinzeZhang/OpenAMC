@@ -26,31 +26,17 @@ custom_channels:
   intel: http://mirrors.bfsu.edu.cn/anaconda/cloud
 ```
 
-Then clean the cache and test it:
+Then clean the cache
 
 ```
 conda update --strict-channel-priority --all  
 
 conda clean -i 
-conda create -n ts python==3.8.10
-conda install pytorch==1.9.0 torchvision==0.10.0 torchaudio==0.9.0 cudatoolkit=11.1 -c pytorch -c conda-forge
 ```
 
 ## [pip](https://mirrors.bfsu.edu.cn/help/pypi/)
 
-Update the pip program to the latest.
-
-```
-pip install -i https://pypi.bfsu.edu.cn/simple pip -U
-```
-
-and then, change the mirror:
-
-```
-pip config set global.index-url https://pypi.bfsu.edu.cn/simple
-```
-
-or using aliyun: `nano ~/.pip/pip.conf`, and paste the following:
+With tencent cloud, create the pip configuration file by `mkdir ~/.pip; nano ~/.pip/pip.conf`, and paste the following:
 
 ```
 [global]
