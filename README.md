@@ -2,7 +2,7 @@
 
 OpenAMC is a PyTorch framework for automatic modulation recognition (AMC),
 adversarial attacks, and adversarial defenses. This release contains the code
-for two research works:
+for three research works:
 
 - **FIM — Fading-Invariant Adversarial Attacks on Neural Modulation
   Recognition**, published at **ICASSP 2025**. FIM uses a Neural Inverse Model
@@ -13,6 +13,7 @@ for two research works:
   **ICASSP 2027**. Authors: Kun He, Gao Liu, and Xinze Zhang. MVRG combines
   Nesterov look-ahead gradients, neighborhood variance tuning, and temporal
   Gaussian smoothing to improve transferability across AMC architectures.
+- **TFI — Time-Frequency Interactive Cross-Architecture Transfer Attack Method for Automatic Modulation Classification**, submitted to **TIFS**. TFI combines Multi-scale Gradient Generalization (MGG) and Shrinkage-Shift Regularization (SSR) to improve transferability across heterogeneous AMC models.
 
 Throughout this repository, the ICASSP 2025 method is named **FIM** and its
 learned inverse component is named **NIM**, matching the published paper.
@@ -26,6 +27,7 @@ learned inverse component is named **NIM**, matching the published paper.
 - Kun He, Gao Liu, and Xinze Zhang, “MVRG: Transferable Adversarial Attacks on
   Automatic Modulation Classification via Multi-Variance-Reduced Gradients,”
   submitted to *ICASSP 2027*.
+- Kun He, Gao Liu, Xinze Zhang, and Shuo Zhang, “TFI: Time-Frequency Interactive Cross-Architecture Transfer Attack Method for Automatic Modulation Classification,” submitted to *TIFS*.
 
 ## 1. Installation
 
@@ -92,6 +94,11 @@ Common dataset identifiers are:
 | `a` | RML2016.10a |
 | `b` | RML2016.10b |
 | `c` | RML2016.04c |
+| `h` | HisarMod2019.1 |
+| `p` | Panoradio.HF |
+| `dr2` | MIMO.Nt4Nr2 |
+| `dr4` | MIMO.Nt16Nr4 |
+| `dr16` | MIMO.Nt64Nr16 |
 | `rml18a` | RML2018.01a |
 
 Common model identifiers include `mcd`, `awn`, `amcnet`, `ctdnn`, `mcl`,
@@ -101,12 +108,13 @@ Common model identifiers include `mcd`, `awn`, `amcnet`, `ctdnn`, `mcl`,
 
 ### Included attacks
 
-The public attack registry is intentionally limited to methods evaluated in the two papers:
+The public attack registry is intentionally limited to methods evaluated in the released papers:
 
 - FIM: `fgm` and `pgd`, plus the channel-independent `pca` and `vae` baselines. “Vanilla” in the FIM paper means transmitting the unmodified receiver-side perturbation and is not a separate attack class.
 - MVRG: `bim`, `mi`, `ni`, `vtmi`, `vtni`, `sfaa`, `feig`, `fciaa`, `pngd`, `mdam`, and `mvrg`.
+- TFI uses the same ten reported baselines and is registered as `tfi`.
 
-The registry keys follow the paper names; in particular, `vtmi`, `vtni`, and `fciaa` correspond to VT-MI, VT-NI, and FCIAA. Implementations unrelated to either paper are not distributed.
+The registry keys follow the paper names; in particular, `vtmi`, `vtni`, and `fciaa` correspond to VT-MI, VT-NI, and FCIAA. Implementations unrelated to these papers are not distributed.
 
 ## 4. Construct the common attack set
 
@@ -171,6 +179,14 @@ uv run python -m exp.attack.mvrg \
 
 For the HisarMod2019.1 setting in the MVRG manuscript, use `-data h`, SNR range
 `4 18`, and `--samples-per-class 5`.
+
+For a TFI attack set, select the TFI profile. It uses all seven paper models, a cap of 100 samples per SNR/class cell, and rounds the common cell size down to a multiple of five. Panoradio.HF starts at 10 dB; the other five paper datasets start at 4 dB.
+
+```bash
+uv run python -m taskAttack.make_attackset --profile tfi -data b -cuda -gid 0
+```
+
+Use `-data h`, `-data p`, `-data dr2`, `-data dr4`, or `-data dr16` to construct the corresponding paper attack set.
 
 ## 5. Run MVRG
 
@@ -238,7 +254,22 @@ Attack(args, parser).conduct(
 )
 ```
 
-## 6. Run FIM
+## 6. Run TFI
+
+TFI is the method from **“TFI: Time-Frequency Interactive Cross-Architecture Transfer Attack Method for Automatic Modulation Classification.”** It is implemented in `taskAttack/attackmethods/gradient/tfi.py` and registered as `tfi`. The launcher keeps all paper-specific defaults in `exp/attack/tfi.py`, leaving the shared parser method-agnostic.
+
+TFI uses 10 iterations with step size `epsilon / 10`. The dataset-specific momentum, SSR shrinkage, MGG scale count, and scale interval are selected automatically by the launcher.
+
+```bash
+uv run python -m exp.attack.tfi \
+  -data b -snr all -attackset attack \
+  -surrogate_model ctdnn -target_model awn \
+  -bound psr -psr -10 -batch_size 512 -cuda -gid 0
+```
+
+A reduced smoke run can use the ordinary test split and one SNR; programmatic callers may override `epoch` through `Attack.conduct(..., algo_configs={"epoch": 1})`.
+
+## 7. Run FIM
 
 FIM is the method from **“Fading-Invariant Adversarial Attacks on Neural
 Modulation Recognition,” published at ICASSP 2025**. It is implemented in
@@ -314,7 +345,7 @@ uv run python -m exp.attack.fim \
 FIM saves the NIM checkpoint under the experiment output tree. A repeated run
 with the same settings loads that checkpoint automatically.
 
-## 7. Outputs
+## 8. Outputs
 
 Normal runs write under `yield_results/`; runs with `-test` write under
 `yield_test/`. Both are ignored by Git. Important files include:
@@ -331,12 +362,12 @@ yield_results/<experiment>/<dataset>/surrogate/<model>/<attack>_results/
 └── NIM.<model>/snr<SNR>/
 ```
 
-For ordinary MVRG evaluation, the target directory contains clean and
+For ordinary TFI or MVRG evaluation, the target directory contains clean and
 adversarial accuracy tensors and logs. For FIM, `adv.rece` is the ideal attack
 without channel effects, `adv.trans` is the uncorrected over-the-air attack,
 and `adv.fim` is the FIM result.
 
-## 8. Troubleshooting
+## 9. Troubleshooting
 
 - **Checkpoint load fails:** verify the filename and dataset directory under
   `checkpoints/<dataset>/nature/`, or pass `-surrogate_ckp`/`-target_ckp`.
@@ -345,6 +376,6 @@ and `adv.fim` is the FIM result.
 - **CUDA out of memory:** lower `-batch_size`; FIM also benefits from lowering
   `-nim_batch_size`.
 - **A quick run takes too long:** use the smoke-test settings, especially one
-  SNR, one neighboring sample for MVRG, or one channel/NIM epoch for FIM.
+  SNR, one iteration for TFI, one neighboring sample for MVRG, or one channel/NIM epoch for FIM.
 - **Reproducing a result:** keep attack, NIM, pilot, and evaluation channel seeds
   fixed and record the exact checkpoint files used.

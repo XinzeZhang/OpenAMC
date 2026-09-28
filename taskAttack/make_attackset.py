@@ -13,6 +13,9 @@ from dataclasses import dataclass
 import torch
 
 from exp.attack.mvrg import MVRG_ATTACK_SET_DEFAULTS
+from exp.attack.tfi import (
+    TFI_ATTACK_SET_DEFAULTS, TFI_SNR_RANGES,
+)
 from taskAttack.Parser import get_parser
 from taskAttack.Wrapper import Attack
 from taskRecog.util import set_dataloader
@@ -93,6 +96,7 @@ def build_balanced_attack_set(
     snrs,
     data_tag="test",
     samples_per_class=100,
+    round_to=1,
     batch_size=512,
     seed=2022,
 ):
@@ -103,6 +107,8 @@ def build_balanced_attack_set(
         raise ValueError("At least one SNR must be selected.")
     if samples_per_class <= 0:
         raise ValueError("samples_per_class must be positive.")
+    if round_to <= 0:
+        raise ValueError("round_to must be positive.")
 
     per_snr = {}
     common_labels = None
@@ -132,6 +138,8 @@ def build_balanced_attack_set(
         for label in common_labels
     )
     selected_count = min(samples_per_class, available)
+    if selected_count >= round_to:
+        selected_count = selected_count // round_to * round_to
     if selected_count <= 0:
         raise ValueError("No jointly correct samples are available to save.")
 
@@ -169,9 +177,13 @@ def main():
     parser = get_parser(parsing=False)
     group = parser.add_argument_group("Attack-set construction")
     group.add_argument(
+        "--profile", choices=["mvrg", "tfi"], default="mvrg",
+        help="paper defaults used by the attack-set generator",
+    )
+    group.add_argument(
         "--models",
         nargs="+",
-        default=MVRG_ATTACK_SET_DEFAULTS["models"],
+        default=None,
         help="model names whose jointly correct samples form the attack set "
         "(default: the seven paper models)",
     )
@@ -180,19 +192,23 @@ def main():
         nargs=2,
         type=int,
         metavar=("MIN", "MAX"),
-        default=MVRG_ATTACK_SET_DEFAULTS["snr_range"],
+        default=None,
         help="inclusive SNR range (default: 4 25, matching the MVRG experiments)",
     )
     group.add_argument(
         "--samples-per-class",
         type=int,
-        default=MVRG_ATTACK_SET_DEFAULTS["samples_per_class"],
+        default=None,
         help="maximum samples retained per SNR/class pair (default: 100)",
+    )
+    group.add_argument(
+        "--round-to", type=int, default=None,
+        help="round the retained SNR/class count down to this multiple",
     )
     group.add_argument(
         "--data-tag",
         choices=["train", "val", "test"],
-        default=MVRG_ATTACK_SET_DEFAULTS["data_tag"],
+        default=None,
         help="dataset split from which samples are selected (default: test)",
     )
     group.add_argument(
@@ -214,6 +230,19 @@ def main():
     )
     args = parser.parse_args()
 
+    if args.profile == "tfi":
+        profile = TFI_ATTACK_SET_DEFAULTS
+        args.snr_range = args.snr_range or TFI_SNR_RANGES.get(args.data)
+        if args.snr_range is None:
+            raise ValueError(f"No TFI SNR defaults for dataset {args.data!r}.")
+    else:
+        profile = MVRG_ATTACK_SET_DEFAULTS
+        args.snr_range = args.snr_range or profile["snr_range"]
+    args.models = args.models or profile["models"]
+    args.samples_per_class = args.samples_per_class or profile["samples_per_class"]
+    args.data_tag = args.data_tag or profile["data_tag"]
+    args.round_to = args.round_to or profile.get("round_to", 1)
+
     torch.manual_seed(args.seed)
     task = Attack(args, parser)
     data_pack = task.data_opts
@@ -234,6 +263,7 @@ def main():
         snrs=snrs,
         data_tag=args.data_tag,
         samples_per_class=args.samples_per_class,
+        round_to=args.round_to,
         batch_size=args.batch_size,
         seed=args.seed,
     )
@@ -251,6 +281,7 @@ def main():
         "snrs": snrs,
         "labels": labels,
         "samples_per_class_per_snr": sample_count,
+        "round_to": args.round_to,
         "total_samples": sum(len(values[1]) for values in attack_set.values()),
         "seed": args.seed,
     }

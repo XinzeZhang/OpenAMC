@@ -7,7 +7,7 @@ attack_zoo = dict(
     pca=("taskAttack.attackmethods.universal.pca", "PCA_UAP"),
     vae=("taskAttack.attackmethods.universal.vae", "VAE_UAP"),
 
-    # MVRG and the ten baselines reported in the MVRG paper.
+    # TFI/MVRG and the ten baselines reported in their papers.
     bim=("taskAttack.attackmethods.gradient.fgsm", "IFGSM"),
     mi=("taskAttack.attackmethods.gradient.fgsm", "MIFGSM"),
     ni=("taskAttack.attackmethods.gradient.fgsm", "NIFGSM"),
@@ -18,6 +18,7 @@ attack_zoo = dict(
     fciaa=("taskAttack.attackmethods.gradient.FCIAA", "FCIAA"),
     pngd=("taskAttack.attackmethods.gradient.PNGD", "PNGD"),
     mdam=("taskAttack.attackmethods.gradient.MDAM", "MDAM"),
+    tfi=("taskAttack.attackmethods.gradient.tfi", "TFI"),
     mvrg=("taskAttack.attackmethods.gradient.mvrg", "MVRG"),
 )
 
