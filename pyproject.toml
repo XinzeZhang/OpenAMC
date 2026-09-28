@@ -1,0 +1,64 @@
+[project]
+name = "openamc"
+version = "0.1.0"
+description = "Automatic modulation recognition, adversarial attacks, and defenses"
+readme = "README.md"
+requires-python = ">=3.10,<3.14"
+dependencies = [
+    "fastdtw>=0.3.4",
+    "h5py>=3.13.0",
+    "importlib>=1.0.4",
+    "ipympl>=0.9.7",
+    "jupyter>=1.1.1",
+    "matplotlib>=3.10.1",
+    "mealpy>=3.0.1",
+    "numpy>=2.2.5",
+    "openpyxl>=3.1.5",
+    "pandas>=2.2.3",
+    "pywavelets>=1.8.0",
+    "scikit-learn>=1.6.1",
+    "scp>=0.15.0",
+    "seaborn>=0.13.2",
+    "skfeature-chappers>=1.1.0",
+    "threadpoolctl>=3.6.0",
+    "torch>=2.7.1",
+    "torchaudio>=2.7.1",
+    "torchinfo>=1.8.0",
+    "torchvision>=0.22.1",
+    "tqdm>=4.67.1",
+]
+
+[[tool.uv.index]]
+url = "https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple"
+default = true
+
+[[tool.uv.index]]
+name = "pytorch-cu128"
+url = "https://download.pytorch.org/whl/cu128"
+explicit = true
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[tool.uv.sources]
+torch = [
+  { index = "pytorch-cu128", marker = "sys_platform == 'linux' " },
+  { index = "pytorch-cpu", marker = "sys_platform != 'linux'" },
+]
+torchvision = [
+  { index = "pytorch-cu128", marker = "sys_platform == 'linux' " },
+  { index = "pytorch-cpu", marker = "sys_platform != 'linux'" },
+]
+torchaudio = [
+  { index = "pytorch-cu128", marker = "sys_platform == 'linux' " },
+  { index = "pytorch-cpu", marker = "sys_platform != 'linux'" },
+]
+
+
+
+[dependency-groups]
+dev = [
+    "ipykernel>=6.29.5",
+]

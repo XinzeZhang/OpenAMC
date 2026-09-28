@@ -3,32 +3,34 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 # from model.base_model import BaseModel
-from models.base._baseNet import BaseNet
+from models.nn._baseNet import BaseNet, BaseNetConfig
 import os
-from models.base._baseTrainer import AnnealingTrainer, EarlyStopping,Trainer
+from models.nn._baseTrainer import Trainer, EarlyStopping, AnnealingTrainer
 import time
 import pandas as pd
 from torch import optim, nn
-from tqdm import tqdm as real_tqdm
-from ray.experimental.tqdm_ray import tqdm as ray_tqdm
-class CausalConv1d(nn.Module):
-    '''Refer to https://discuss.pytorch.org/t/causal-convolution/3456/11'''
-    def __init__(self, in_channels, out_channels, kernel_size, dilation=1, **kwargs):
-        super(CausalConv1d, self).__init__()
-        self.padding = (kernel_size - 1) * dilation
-        self.conv = nn.Conv1d(in_channels, out_channels, kernel_size, padding=self.padding, dilation=dilation, **kwargs)
-    
-    def forward(self, x):
-        x = self.conv(x)
-        return x[:,:,:-self.padding]
+from tqdm.auto import tqdm as real_tqdm
+class MCLDNN_config(BaseNetConfig):
+    '''Refer to the paper:  'A Spatiotemporal Multi-Channel Learning Framework for Automatic Modulation Recognition.
+    '''
+    def base_modify(self):
+        self.import_path = 'models/nn/MCLDNN.py'
+        self.class_name = 'MCLDNN'
+        # self.trainer_module = (self.import_path, 'MCLDNN_Trainer')
+        self.arch = 'crnn'
+
+        self.hyper.milestone_step = 2
+        self.hyper.gamma = 0.8
+
 
 class MCLDNN(BaseNet):
     '''Refer to https://github.com/wzjialang/MCLDNN/blob/master/MCLDNN.py
     '''
     def __init__(self, hyper = None, logger = None):
-        super().__init__(hyper, logger)  
-                    
-        output_dim = hyper.num_classes
+        super().__init__(hyper, logger)
+
+    def initialize_arch(self):
+        output_dim = self.hyper.num_classes
 
         # input(batch, 1, 2, 128)
         self.conv1 = nn.Sequential(
@@ -40,7 +42,7 @@ class MCLDNN(BaseNet):
             nn.BatchNorm1d(1),
             CausalConv1d(in_channels = 1, out_channels = 50, kernel_size=8),
             nn.ReLU(),
-        )        
+        )
         self.conv3 = nn.Sequential(
             nn.BatchNorm1d(1),
             CausalConv1d(in_channels = 1, out_channels = 50, kernel_size=8),
@@ -69,7 +71,7 @@ class MCLDNN(BaseNet):
         # )
         self.lstm1 = nn.LSTM(input_size= 100, hidden_size= 128, num_layers= 1, batch_first= True)
         self.lstm2 = nn.LSTM(input_size= 128, hidden_size= 128, num_layers= 1, batch_first= True)
-        
+
         self.fc1 = nn.Sequential(
             nn.Linear(in_features= 128, out_features= 128),
             nn.SELU(),
@@ -83,10 +85,15 @@ class MCLDNN(BaseNet):
         self.fc3 = nn.Sequential(
             nn.Linear(in_features= 128, out_features= output_dim)
         )
-        
+
         self.initialize_weight()
         self.to(self.hyper.device)
-        
+        self.has_rnn = True
+
+    def rnn_reactivate(self,):
+        self.lstm1.train()
+        self.lstm2.train()
+
 
     def forward(self, x):
         x = torch.unsqueeze(x, 1)
@@ -95,7 +102,7 @@ class MCLDNN(BaseNet):
         x_i = self.conv2(x[:,:,0,:])
         x_q = self.conv3(x[:,:,1,:])
         x_iq2 = torch.stack([x_i,x_q],dim=-2)
-        
+
         x_iq2 = self.conv4(x_iq2)
         _x_all = torch.cat([x_iq,x_iq2], dim=1)
         x_all = self.conv5(_x_all)
@@ -108,87 +115,58 @@ class MCLDNN(BaseNet):
         x_all = self.fc2(x_all)
         out = self.fc3(x_all)
 
-        return out 
-    
-    def _xfit(self, train_loader, val_loader):
-        net_trainer = AnnealingTrainer(self, train_loader, val_loader, self.hyper, self.logger)
-        net_trainer.loop()
-        fit_info = net_trainer.epochs_stats
-        return fit_info    
-    
-class MCLDNN_Trainer(Trainer):
-    def __init__(self, model,train_loader,val_loader, cfg, logger):
-        super().__init__(model,train_loader,val_loader,cfg,logger)
+        return out
 
-    def adjust_lr(self):
-        if self.early_stopping.counter >= self.cfg.milestone_step:
-            history_lr = self.optimizer.param_groups[0]['lr']
-            self.adjust_learning_rate(self.optimizer, self.cfg.gamma)                  
-            current_lr = self.optimizer.param_groups[0]['lr']
-            self.logger.info(
-                f'Learning rate decreased ({history_lr:.3E} --> {current_lr:.3E}).')
-            
-class MCLDNN_Trainer2(Trainer):
-    def __init__(self, model,train_loader,val_loader, cfg, logger):
-        super().__init__(model,train_loader,val_loader,cfg,logger)
-        
-    def before_train(self):
-        self.optimizer = optim.Adam(self.model.parameters(), lr=self.cfg.lr)
-        self.criterion = nn.CrossEntropyLoss().to(self.cfg.device)
-        self.early_stopping = EarlyStopping(
-            self.logger, patience=self.cfg.patience)
-        
-        T_0 = 1 if 'T_0' not in self.cfg.dict else self.cfg.T_0
-        T_mult = 2 if 'T_mult' not in self.cfg.dict else self.cfg.T_mult
-        
-        self.scheduler = optim.lr_scheduler.CosineAnnealingWarmRestarts(self.optimizer, T_0= T_0, T_mult=T_mult)
+    def get_logits_and_intermediate_features(self, x):
+        features = []
 
-        self.lr_list = []
-        self.best_monitor = 0.0
-        self.best_epoch = 0
-        self.train_loss_list = []
-        self.train_acc_list = []
-        self.val_loss_list = []
-        self.val_acc_list = []
-    
-    def run_optim_step(self, i, sig_batch, lab_batch):
-        sig_batch = sig_batch.to(self.cfg.device)
-        lab_batch = lab_batch.to(self.cfg.device)
-        loss, acc = self.cal_loss_acc(sig_batch, lab_batch)
-        self.optimizer.zero_grad()
-        loss.backward()
-        self.optimizer.step()
-        self.scheduler.step(self.iter-1 + i / len(self.train_loader))
+        x = torch.unsqueeze(x, 1)
+        # x = x.view(x.shape[0],1, 2, 128)
+        x_iq = self.conv1(x)
+        x_i = self.conv2(x[:,:,0,:])
+        x_q = self.conv3(x[:,:,1,:])
+        x_iq2 = torch.stack([x_i,x_q],dim=-2)
 
-        self.train_loss.update(loss.item())
-        self.train_acc.update(acc)
-    
-    def run_train_step(self, ray = False):
-        
-        if ray:
-            for step, (sig_batch, lab_batch) in ray_tqdm(enumerate(self.train_loader),  total=len(self.train_loader)):
-                self.run_optim_step(step, sig_batch, lab_batch)
-        else:
-            # pass
-            with real_tqdm(total=len(self.train_loader),
-                    desc=f'Epoch{self.iter}/{self.cfg.epochs}',
-                    postfix=dict,
-                    mininterval=0.3) as pbar:
-                for step, (sig_batch, lab_batch) in enumerate(self.train_loader):
-                    self.run_optim_step(step, sig_batch, lab_batch)
+        x_iq2 = self.conv4(x_iq2)
+        _x_all = torch.cat([x_iq,x_iq2], dim=1)
+        x_all = self.conv5(_x_all)
+        x_all = torch.transpose(x_all[:,:,0,:],1,2)
 
-                    pbar.set_postfix(**{'train_loss': self.train_loss.avg,
-                                        'train_acc': self.train_acc.avg})
-                    pbar.update(1)
-                
-        return self.train_loss.avg, self.train_acc.avg
-        
-    def adjust_lr(self):
-        # history_lr = self.optimizer.param_groups[0]['lr']
-        # self.scheduler.step()      
-        current_lr = self.optimizer.param_groups[0]['lr']
-        self.logger.info(
-            f'Learning rate: ({current_lr:.3E}).')
+        x_all, (h,c) = self.lstm1(x_all)
+        x_all, (h,c) = self.lstm2(x_all)
+        x_all = x_all[:,-1,:]
+        features.append(x_all)
+        x_all = self.fc1(x_all)
+        features.append(x_all)
+        x_all = self.fc2(x_all)
+        features.append(x_all)
+        out = self.fc3(x_all)
+
+        return out, features
+
+
+    def feature_extract(self, x):
+        x = torch.unsqueeze(x, 1)
+        # x = x.view(x.shape[0],1, 2, 128)
+        x_i = self.conv2(x[:,:,0,:])
+        x_q = self.conv3(x[:,:,1,:])
+        x_iq2 = torch.stack([x_i,x_q],dim=-2)
+
+        return x_iq2
+
+
+class CausalConv1d(nn.Module):
+    '''Refer to https://discuss.pytorch.org/t/causal-convolution/3456/11'''
+    def __init__(self, in_channels, out_channels, kernel_size, dilation=1, **kwargs):
+        super(CausalConv1d, self).__init__()
+        self.padding = (kernel_size - 1) * dilation
+        self.conv = nn.Conv1d(in_channels, out_channels, kernel_size, padding=self.padding, dilation=dilation, **kwargs)
+
+    def forward(self, x):
+        x = self.conv(x)
+        return x[:,:,:-self.padding]
+
+
 
 if __name__ == '__main__':
     model = MCLDNN(11)

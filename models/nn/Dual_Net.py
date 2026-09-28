@@ -2,64 +2,22 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from models.base._baseNet import BaseNet
+from models.nn._baseNet import BaseNet, BaseNetConfig
 
+class DualNet_config(BaseNetConfig):
+    def base_modify(self):
+        self.import_path = 'models/nn/Dual_Net.py'
+        self.class_name = 'DualNet'
+        self.arch = 'crnn'
 
-class Stream(nn.Module):
-    def __init__(self):
-        super(Stream, self).__init__()
-        # input(batch, 1, 2, 128)
-        self.conv1 = nn.Sequential(
-            nn.BatchNorm2d(1),
-            nn.ZeroPad2d((2, 2, 0, 0)),
-            nn.Conv2d(in_channels = 1, out_channels = 256, kernel_size = (1, 3)),
-            nn.ReLU(inplace=True),
-            nn.Dropout(0.5)
-        )
-        self.conv2 = nn.Sequential(
-            nn.BatchNorm2d(256),
-            nn.ZeroPad2d((2, 2, 0, 0)),
-            nn.Conv2d(in_channels = 256, out_channels = 256, kernel_size=(2, 3)),
-            nn.ReLU(inplace=True),
-            nn.Dropout(0.5)
-        )
-        
-        self.conv3 = nn.Sequential(
-             nn.BatchNorm2d(256),
-             nn.ZeroPad2d((2, 2, 0, 0)),
-             nn.Conv2d(in_channels= 256, out_channels= 80, kernel_size=(1,3)),
-             nn.ReLU(inplace=True),
-             nn.Dropout(0.5)
-        )
-
-        self.lstm1 = nn.Sequential(
-            nn.LSTM(input_size= 80, hidden_size= 100, num_layers= 1, batch_first= True, dropout = 0.5),
-        )
-        # self.dropout_1 = nn.Dropout(0.5)
-        self.lstm2 = nn.Sequential(
-            nn.LSTM(input_size= 100, hidden_size= 50, num_layers= 1, batch_first= True, dropout = 0.5),
-        )
-        # self.dropout_2 = nn.Dropout(0.5)
-
-    def forward(self, x: torch.Tensor):
-        # x = torch.unsqueeze(x, 1)
-        # x = x.view(x.shape[0],1, 2, 128)
-        x = self.conv1(x)
-        x = self.conv2(x)
-        x = self.conv3(x)
-        x = x.view(x.shape[0], 80, -1)
-        x = x.transpose(1,2)
-        x, (h,c) = self.lstm1(x)
-        # x = self.dropout_1(x)
-        x, (h,c) = self.lstm2(x)
-        # x = self.dropout_2(x)
-        x = x[:,-1:,:]
-        return x
+        self.hyper.epochs = 200
 
 class DualNet(BaseNet):
     def __init__(self, hyper = None, logger = None):
-        super().__init__(hyper, logger)  
-        output_dim = hyper.num_classes
+        super().__init__(hyper, logger)
+
+    def initialize_arch(self):
+        output_dim = self.hyper.num_classes
         self.steam_iq = Stream()
         self.steam_pa = Stream()
         self.fc1 = nn.Sequential(
@@ -67,6 +25,14 @@ class DualNet(BaseNet):
         )
         self.initialize_weight()
         self.to(self.hyper.device)
+
+        self.has_rnn = True  # Indicate that this model uses RNN layers
+
+    def rnn_reactivate(self,):
+        self.steam_iq.lstm1.train()
+        self.steam_iq.lstm2.train()
+        self.steam_pa.lstm1.train()
+        self.steam_pa.lstm2.train()
 
     def forward(self, x: torch.Tensor):
         x = torch.unsqueeze(x, 1)
@@ -100,6 +66,58 @@ class DualNet(BaseNet):
                 nn.init.constant_(m.bias, 0)
             elif isinstance(m, nn.Linear):
                 nn.init.xavier_normal_(m.weight)
+
+
+class Stream(nn.Module):
+    def __init__(self):
+        super(Stream, self).__init__()
+        # input(batch, 1, 2, 128)
+        self.conv1 = nn.Sequential(
+            nn.BatchNorm2d(1),
+            nn.ZeroPad2d((2, 2, 0, 0)),
+            nn.Conv2d(in_channels = 1, out_channels = 256, kernel_size = (1, 3)),
+            nn.ReLU(inplace=True),
+            nn.Dropout(0.5)
+        )
+        self.conv2 = nn.Sequential(
+            nn.BatchNorm2d(256),
+            nn.ZeroPad2d((2, 2, 0, 0)),
+            nn.Conv2d(in_channels = 256, out_channels = 256, kernel_size=(2, 3)),
+            nn.ReLU(inplace=True),
+            nn.Dropout(0.5)
+        )
+
+        self.conv3 = nn.Sequential(
+             nn.BatchNorm2d(256),
+             nn.ZeroPad2d((2, 2, 0, 0)),
+             nn.Conv2d(in_channels= 256, out_channels= 80, kernel_size=(1,3)),
+             nn.ReLU(inplace=True),
+             nn.Dropout(0.5)
+        )
+
+        self.lstm1 = nn.Sequential(
+            nn.LSTM(input_size= 80, hidden_size= 100, num_layers= 1, batch_first= True),
+        )
+        # self.dropout_1 = nn.Dropout(0.5)
+        self.lstm2 = nn.Sequential(
+            nn.LSTM(input_size= 100, hidden_size= 50, num_layers= 1, batch_first= True),
+        )
+        # self.dropout_2 = nn.Dropout(0.5)
+
+    def forward(self, x: torch.Tensor):
+        # x = torch.unsqueeze(x, 1)
+        # x = x.view(x.shape[0],1, 2, 128)
+        x = self.conv1(x)
+        x = self.conv2(x)
+        x = self.conv3(x)
+        x = x.view(x.shape[0], 80, -1)
+        x = x.transpose(1,2)
+        x, (h,c) = self.lstm1(x)
+        # x = self.dropout_1(x)
+        x, (h,c) = self.lstm2(x)
+        # x = self.dropout_2(x)
+        x = x[:,-1:,:]
+        return x
 
 if __name__ == '__main__':
     model = DualNet(11)

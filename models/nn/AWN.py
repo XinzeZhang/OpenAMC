@@ -4,22 +4,89 @@ import sys
 
 import torch
 import torch.nn as nn
+from torch import optim
 
-from models.base._baseNet import BaseNet
-from models.base._baseTrainer import Trainer
+from models.nn._baseNet import BaseNet
+# from models.nn._baseTrainer import Trainer, AnnealingTrainer, EarlyStopping
+import math
+# from models.nn._augTrainer import AnnealingTrainer as augAnnealingTrainer
+# from models.nn._augTrainer import Trainer as augTrainer
+
+from models.nn._baseNet import BaseNetConfig
+class AWN_config(BaseNetConfig):
+    def base_modify(self):
+        self.import_path = 'models/nn/AWN.py'
+        self.class_name = 'AWN'
+        # self.trainer_module = (self.import_path, 'AWN_Trainer')
+
+        self.hyper.batch_size = 128
+        self.hyper.gamma = 0.5
+        self.hyper.num_level = 1
+        self.hyper.regu_details = 0.01
+        self.hyper.regu_approx = 0.01
+        self.hyper.in_channels = 64
+        self.hyper.latent_dim = 320
+
+# class AWN_Trainer(AnnealingTrainer):
+#     def cal_loss_acc(self, sig_batch, lab_batch):
+#         logit, regu_sum = self.model(sig_batch)
+#         loss = self.criterion(logit, lab_batch)
+#         loss += sum(regu_sum)
+
+#         pre_lab = torch.argmax(logit, 1)
+#         acc = torch.sum(pre_lab == lab_batch.data).double(
+#         ).item() / lab_batch.size(0)
+
+#         return loss, acc
+
+# class Aug_AWN_Trainer(augAnnealingTrainer):
+#     def cal_loss_acc(self, sig_batch, lab_batch, lab_weight):
+#         logit, regu_sum = self.model(sig_batch)
+#         loss = self.criterion(logit, lab_batch)
+#         loss = loss * lab_weight
+#         loss = torch.mean(loss)
+#         loss += sum(regu_sum)
+#         pre_lab = torch.argmax(logit, 1)
+#         acc = torch.sum(pre_lab == lab_batch.data).double(
+#         ).item() / lab_batch.size(0)
+#         return loss, acc
+
+# class NormAug_AWN_Trainer(augAnnealingTrainer):
+#     def cal_loss_acc(self, sig_batch, lab_batch, lab_weight):
+#         logit, regu_sum = self.model(sig_batch)
+#         loss = self.criterion(logit, lab_batch)
+#         loss = (loss * lab_weight / lab_weight.sum()).sum()
+#         loss = torch.mean(loss)
+#         loss += sum(regu_sum)
+#         pre_lab = torch.argmax(logit, 1)
+#         acc = torch.sum(pre_lab == lab_batch.data).double(
+#         ).item() / lab_batch.size(0)
+#         return loss, acc
+
 
 class AWN(BaseNet):
-    def __init__(self, hyper = None, logger = None):
-        super().__init__(hyper, logger)  
+    '''
+    J. Zhang, T. Wang, Z. Feng, and S. Yang, “Toward the automatic modulation classification with adaptive wavelet network,” IEEE Transactions on Cognitive Communications and Networking, vol. 9, no. 3, pp. 549–563, June 2023, doi: 10.1109/TCCN.2023.3252580.
+    '''
 
-        self.num_classes = hyper.num_classes
-        self.num_levels = hyper.num_level
-        self.in_channels = hyper.in_channels
+    def __init__(self, hyper = None, logger = None):
+        super().__init__(hyper, logger)
+
+    def initialize_arch(self):
+        self.num_classes = self.hyper.num_classes
+
+        max_level = 0
+        while( self.hyper.sig_len / math.pow(2, 1+max_level) > 2):
+            max_level +=1
+
+        self.num_levels = self.hyper.num_level if self.hyper.num_level <= max_level else max_level
+
+        self.in_channels = self.hyper.in_channels
         self.out_channels = self.in_channels * (self.num_levels + 1)
-        self.kernel_size = hyper.kernel_size
-        self.latent_dim = hyper.latent_dim
-        self.regu_details = hyper.regu_details
-        self.regu_approx = hyper.regu_approx
+        self.kernel_size = 3 if 'kernel_size' not in self.hyper.dict else self.hyper.kernel_size # only be 3 can run.
+        self.latent_dim = self.hyper.latent_dim
+        self.regu_details = self.hyper.regu_details
+        self.regu_approx = self.hyper.regu_approx
 
         self.conv1 = nn.Sequential(
             nn.ZeroPad2d((3, 3, 0, 0)),
@@ -62,7 +129,7 @@ class AWN(BaseNet):
             nn.LeakyReLU(negative_slope=0.01, inplace=True),
             nn.Linear(self.latent_dim, self.num_classes)
         )
-        
+
         self.to(self.hyper.device)
 
     def forward(self, x):
@@ -87,35 +154,65 @@ class AWN(BaseNet):
         logit = self.fc(x)
 
         return logit, regu_sum
-    
-    # def _xfit_once(self, )
-    
-    def _xfit(self, train_loader, val_loader):
-        net_trainer = AWN_Trainer(self, train_loader, val_loader, self.hyper, self.logger)
-        net_trainer.loop()
-        fit_info = net_trainer.epochs_stats
-        return fit_info
-    
-    def predict(self, sample):     
-        sample = sample.to(self.hyper.device)
-        logit, _ = self.forward(sample)
-        pre_lab = torch.argmax(logit, 1).cpu()
-        return pre_lab
-    
-class AWN_Trainer(Trainer):
-    def __init__(self, model,train_loader,val_loader, cfg, logger):
-        super().__init__(model,train_loader,val_loader, cfg,logger)
 
-    def cal_loss_acc(self, sig_batch, lab_batch):
-        logit, regu_sum = self.model(sig_batch)
-        loss = self.criterion(logit, lab_batch)
-        loss += sum(regu_sum)
-        
-        pre_lab = torch.argmax(logit, 1)
-        acc = torch.sum(pre_lab == lab_batch.data).double(
-        ).item() / lab_batch.size(0)
-        
-        return loss, acc
+    def feature_extract(self,x):
+        x = x.unsqueeze(1)  # x:[N, 2, T] -> [N, 1, 2, T]
+        x = self.conv1(x)
+
+        x = x.squeeze(2)  # x:[N, C, 1, T] -> [N, C, T]
+        x = self.conv2(x)
+        regu_sum = []  # List of constrains on details and mean
+        det = []  # List of averaged pooled details
+
+        for l in self.levels:
+            x, details, regu = l(x)
+            regu_sum += [regu]
+            det += [self.avgpool(details)]
+        aprox = self.avgpool(x)
+        det += [aprox]
+
+        x = torch.cat(det, 1)
+        x = x.view(-1, x.size()[1])
+        x = torch.mul(self.SE_attention_score(x), x)
+
+        return x
+
+    def get_logits_and_intermediate_features(self, x):
+        features = []
+
+        x = x.unsqueeze(1)
+        x = self.conv1(x)
+        features.append(x)
+
+        x = self.conv2(x.squeeze(2))
+        features.append(x)
+
+        regu_sum = []
+        det = []
+
+        for l in self.levels:
+            x, details, regu = l(x)
+            regu_sum += [regu]
+            det += [self.avgpool(details)]
+        aprox = self.avgpool(x)
+        det += [aprox]
+
+        x = torch.cat(det, 1)
+        x = x.view(-1, x.size()[1])
+        features.append(x)
+
+        x = torch.mul(self.SE_attention_score(x), x)
+        logit = self.fc(x)
+
+        return logit, features
+
+    def logits(self, sample):
+        """
+        Return: prediction logits of each sample as torch.tensor.
+        """
+        sample = sample.to(self.hyper.device)
+        logits, _ = self.forward(sample)
+        return logits
 
 class Splitting(nn.Module):
     def __init__(self):
@@ -131,7 +228,7 @@ class Splitting(nn.Module):
         :return: x_even, x_odd
         """
         return self.conv_even(x), self.conv_odd(x)
-    
+
 class Operator(nn.Module):
     def __init__(self, in_planes, kernel_size=3, dropout=0.):
         super(Operator, self).__init__()
@@ -157,7 +254,7 @@ class Operator(nn.Module):
         """
         x = self.operator(x)
         return x
-      
+
 class LiftingScheme(nn.Module):
     def __init__(self, in_planes, kernel_size=3):
         super(LiftingScheme, self).__init__()
@@ -177,7 +274,7 @@ class LiftingScheme(nn.Module):
         (x_even, x_odd) = self.split(x)
         c = x_even + self.U(x_odd)
         d = x_odd - self.P(c)
-        return c, d        
+        return c, d
 
 class LevelTWaveNet(nn.Module):
     def __init__(self, in_planes, kernel_size, regu_details, regu_approx):
@@ -214,3 +311,21 @@ class LevelTWaveNet(nn.Module):
 
             return approx, details, regu
 
+if __name__ == "__main__":
+    """ 测试网络结构构建是否构建正确，并打印每层参数 """
+    from torchinfo import summary
+
+    hyper = AWN_config().hyper
+    hyper.num_classes = 11
+    hyper.sig_len = 1024
+    model = AWN(hyper=hyper)
+
+    x = torch.randn(2, 2, hyper.sig_len, device=hyper.device)
+    features = model.get_intermediate_features(x)
+    for i, f in enumerate(features):
+        print(f"Feature {i} shape: {f.shape}")
+
+    # model.cuda()
+    # print(model)
+    # # 统计网络参数及输出大小
+    # summary(model, (2, hyper.sig_len), batch_dim=0)

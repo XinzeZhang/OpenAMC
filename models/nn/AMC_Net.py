@@ -8,29 +8,39 @@ import math
 import torch.nn.functional as F
 import copy
 
-from models.base._baseNet import BaseNet
+from models.nn._baseNet import BaseNet, BaseNetConfig
 
+class AMCNet_config(BaseNetConfig):
+    def base_modify(self):
+        self.import_path = 'models/nn/AMC_Net.py'
+        self.class_name = 'AMC_Net'
 
+        self.hyper.gamma = 0.1
+        self.hyper.extend_channel = 36
+        self.hyper.num_heads = 2
+        self.hyper.conv_chan_list = [36, 64, 128, 256]
 
 class AMC_Net(BaseNet):
     def __init__(self, hyper = None, logger = None):
-        super().__init__(hyper, logger)  
-                   
-        self.sig_len = hyper.sig_len
-        self.extend_channel = hyper.extend_channel
-        self.latent_dim = hyper.latent_dim
-        self.num_classes = hyper.num_classes
-        self.num_heads = hyper.num_heads
-        self.conv_chan_list = hyper.conv_chan_list
+        super().__init__(hyper, logger)
+
+    def initialize_arch(self):
+        self.sig_len = self.hyper.sig_len
+        self.extend_channel = self.hyper.extend_channel
+        self.num_classes = self.hyper.num_classes
+        self.num_heads = self.hyper.num_heads
+        self.conv_chan_list = self.hyper.conv_chan_list
 
         if self.conv_chan_list is None:
             self.conv_chan_list = [36, 64, 128, 256]
 
+        self.latent_dim = self.conv_chan_list[-1] * self.num_heads
         self.stem_layers_num = len(self.conv_chan_list) - 1
 
+        self.target_len = 128
         self.ACM = AdaCorrModule(self.sig_len)
         self.MSM = MultiScaleModule(self.extend_channel)
-        self.FFM = FeaFusionModule(self.num_heads, self.sig_len, self.sig_len)
+        self.FFM = FeaFusionModule(self.num_heads, self.target_len, self.target_len)
 
         self.Conv_stem = nn.Sequential()
 
@@ -41,6 +51,13 @@ class AMC_Net(BaseNet):
                                           self.conv_chan_list[t + 1])
                                       )
 
+        if self.hyper.sig_len > 128:
+            self.Conv_stem.add_module(f'conv_stem_reduce',
+                                        ReduceConvBlock(
+                                            self.conv_chan_list[-1],
+                                            self.sig_len)
+                                      )
+
         self.GAP = nn.AdaptiveAvgPool1d(1)
         self.classifier = nn.Sequential(
             nn.Linear(self.latent_dim, self.latent_dim),
@@ -48,7 +65,7 @@ class AMC_Net(BaseNet):
             nn.PReLU(),
             nn.Linear(self.latent_dim, self.num_classes)
         )
-        
+
         self.to(self.hyper.device)
 
     def forward(self, x):
@@ -63,6 +80,43 @@ class AMC_Net(BaseNet):
         y = self.classifier(x.squeeze(2))
         return y
 
+    def get_logits_and_intermediate_features(self, x):
+        features = []
+
+        x = x.unsqueeze(1)
+        x = self.ACM(x)
+        features.append(x)
+        x = x / x.norm(p=2, dim=-1, keepdim=True)
+        x = self.MSM(x)
+        features.append(x)
+        x = self.Conv_stem(x)
+        features.append(x)
+        x = self.FFM(x.squeeze(2))
+        x = self.GAP(x)
+
+        out = self.classifier(x.squeeze(2))
+
+        return out, features
+
+class ReduceConvBlock(nn.Module):
+    def __init__(self, in_channel, sig_len, target_len=128):
+        super(ReduceConvBlock, self).__init__()
+        k = sig_len // target_len
+
+
+        self.conv_block = nn.Sequential(
+            nn.Conv2d(in_channel, in_channel, kernel_size=(1,k), stride=(1,k), groups=in_channel, bias=False),
+            nn.ReLU(inplace=True),
+            nn.BatchNorm2d(in_channel)
+        )
+
+    def forward(self, x):
+        """
+        x: [batchsize, C, H, W]
+        """
+        x = self.conv_block(x)
+
+        return x
 
 class Conv_Block(nn.Module):
     def __init__(self, in_channel, out_channel):
@@ -145,7 +199,8 @@ class AdaCorrModule(nn.Module):
 
     def forward(self, x):
         # x:[N, C_out, 1, W]
-        x_init = copy.deepcopy(x)
+        # x_init = copy.deepcopy(x)
+        x_init = x.detach().clone()
         x = torch.fft.fft(x, dim=-1)
         X_re = torch.real(x)
         X_im = torch.imag(x)
@@ -157,7 +212,7 @@ class AdaCorrModule(nn.Module):
 #         x = x / x.norm(p=2, dim=-1, keepdim=True)
 #         x_init = x_init / x_init.norm(p=2, dim=-1, keepdim=True)
         x = x + x_init
-        
+
         return x
 
 
@@ -204,7 +259,7 @@ class FeaFusionModule(nn.Module):
         return context
 
 
-    
+
 # if __name__ == '__main__':
 #     model = AMC_Net(11, 128, 3)
 #     x = torch.rand((4, 2, 128))

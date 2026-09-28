@@ -2,18 +2,29 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from models.base._baseNet import BaseNet
-from models.base._baseTrainer import AnnealingTrainer
+from models.nn._baseNet import BaseNet, BaseNetConfig
+from models.nn._baseTrainer import AnnealingTrainer
+
+class ResNet_config(BaseNetConfig):
+    def base_modify(self):
+        self.import_path = 'models/nn/ResNet.py'
+        self.class_name = 'Subsampling_ResNet'
+
+        self.hyper.epochs = 100
+        self.hyper.milestone_step = 1
+
 
 class Subsampling_ResNet(BaseNet):
     '''
-    The model arch. is same with code in https://github.com/dl4amc/dds, refered to the paper "Ensemble Wrapper Subsampling for Deep Modulation Classificatio, IEEE TCCN 2023", which is inspired by the ResNet arch. in "Over-the-air deep learning based radio signal classiﬁcation,” IEEE J. Sel. Topics Signal Process., vol. 12, no. 1, pp. 168–179, Feb. 2018."\n
+    The model arch. is same with code in https://github.com/dl4amc/dds, refered to the paper "Ensemble Wrapper Subsampling for Deep Modulation Classificatio, IEEE TCCN 2023", which is inspired by the ResNet arch. in "Over-the-air deep learning based radio signal classification,” IEEE J. Sel. Topics Signal Process., vol. 12, no. 1, pp. 168–179, Feb. 2018."\n
     https://github.com/dl4amc/dds
     '''
 
     def __init__(self, hyper=None, logger=None):
         super().__init__(hyper, logger)
-        output_dim = hyper.num_classes
+
+    def initialize_arch(self):
+        output_dim = self.hyper.num_classes
 
         # input (batch, 2, 128)
         self.res_stack1 = Res_Stack(input_dim=2, output_dim=32)
@@ -29,8 +40,8 @@ class Subsampling_ResNet(BaseNet):
             raise ValueError('Input sig_len is <= 8, make the representation dim. of the residual net too small.')
         else:
             res_feature_dim = int(self.hyper.sig_len / 2 / 2 / 2)
-        
-        
+
+
 
         self.fc1 = nn.Sequential(
             nn.Linear(32*res_feature_dim, 128),
@@ -72,12 +83,33 @@ class Subsampling_ResNet(BaseNet):
             elif isinstance(m, nn.Linear):
                 nn.init.kaiming_normal_(m.weight)
 
-    def _xfit(self, train_loader, val_loader):
-        net_trainer = AnnealingTrainer(self, train_loader, val_loader, self.hyper, self.logger)
-        net_trainer.loop()
-        fit_info = net_trainer.epochs_stats
-        return fit_info   
-    
+    def feature_extract(self, x):
+        x = self.res_stack1(x)
+        x = self.res_stack2(x)
+        x = self.res_stack3(x)
+        # x = self.res_stack4(x)
+        x = x.view(x.shape[0], -1)
+        x = self.fc1(x)
+        x = self.fc2(x)
+
+        return x
+
+    def get_logits_and_intermediate_features(self, x):
+        features = []
+
+        x = self.res_stack1(x)
+        features.append(x)
+        x = self.res_stack2(x)
+        features.append(x)
+        x = self.res_stack3(x)
+        features.append(x)
+        # x = self.res_stack4(x)
+        x = x.view(x.shape[0], -1)
+        x = self.fc1(x)
+        x = self.fc2(x)
+        out = self.fc3(x)
+
+        return out, features
 
 class Res_Stack(nn.Module):
     def __init__(self, input_dim, output_dim = 32):
@@ -90,8 +122,8 @@ class Res_Stack(nn.Module):
 
         self.res_unit1 = Res_Unit(hidden_dim=32)
         self.res_unit2 = Res_Unit(hidden_dim=32)
-        self.max_pooling = nn.MaxPool1d(kernel_size=2) #	
-        
+        self.max_pooling = nn.MaxPool1d(kernel_size=2) #
+
 
     def forward(self, x):
         x = self.conv1x1(x)
@@ -107,7 +139,7 @@ class Res_Unit(nn.Module):
         output_dim = hidden_dim
         if input_dim != output_dim:
             raise ValueError(f'Different input_dim and output_dim in Res_Unit!!!!!\nThe input_dim: {input_dim} \tThe output_dim: {output_dim}')
-        
+
         self.conv1 = nn.Sequential(
             nn.Conv1d(in_channels=input_dim, out_channels=output_dim,
                       kernel_size=5, padding='same'),

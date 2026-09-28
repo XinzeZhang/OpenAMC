@@ -1,0 +1,11 @@
+from models.nn.AMC_Net import AMCNet_config as amcnet
+from models.nn.AWN import AWN_config as awn
+from models.nn.CLDNN import CLDNN_config as cldnn
+from models.nn.CTDNN import CTDNN_config as ctdnn
+from models.nn.Dual_Net import DualNet_config as dualnet
+from models.nn.MCDformer import MCDformer_config as mcd
+from models.nn.MCLDNN import MCLDNN_config as mcl
+from models.nn.ResNet import ResNet_config as res
+from models.nn.VGG import VGG16_config as vgg
+from models.nn.VT_CNN import VTCNN_config as vtcnn
+from models.nn.MsmcNet import MsmcNet_config as msmc
